@@ -1,0 +1,73 @@
+# .github/workflows/rosti_deploy.yml
+
+name: Deploy into Roští.cz
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HOST: ssh.rosti.cz
+      USER: app
+      PORT: ${{ secrets.PORT }}
+      NODE_VERSION: 22.4.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.KEY }}
+      - name: Setup hostkey
+        run: |
+          echo "ssh.rosti.cz ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCKQgpt6DZ+VEEwjSx/yRRGqBjlsR0rNJh7DU2xu87mViM0hCd7ZrpAQEA04AVrUhtaNsNBFAeHGY4qTcnKbJ5ygu2buCvHv/2f3rSrQew8jRFhTZSCCcvv35sVSQqn56ijxw2kYLtSUl9NRFlMjwDmRpdjDUayc4ecze5FlCORL2lO7mdBxutoDhaUJa6q9KMq8jjYdDUxBwA6+nWtWvIDP4RPBLShD9DYZdEj/kuV3LJerLoFbk2Ag6jiHr/WRAwBDQizLbBcthtl+ugZvKWv7X5t+yH4WjpMsKMCfujqinIa4BQP11MHznd297dpapJQDm/NeAUaMEEwjDGwIVhB" > ./known_hosts
+      - name: env
+        run: |
+          cat << EOF > .env
+          ${{ secrets.ENV }}
+          EOF
+      - name: Dependencies
+        run: |
+          bun install
+      - name: Build
+        run: |
+          bun run build
+      - name: Setup Bun
+        run: |
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST /usr/local/bin/rosti bun $BUN_VERSION
+      - name: Setup Supervisord
+        run: |
+          cat << EOF > spring.conf
+          [program:spring]
+          command=/srv/bin/primary_tech/bun start
+          environment=PATH="/srv/bin/primary_tech:/usr/local/bin:/usr/bin:/bin:/srv/.npm-packages/bin"
+          stopasgroup=true
+          directory=/srv/spring
+          process_name=spring
+          autostart=true
+          autorestart=true
+          stdout_logfile=/srv/log/spring.log
+          stdout_logfile_maxbytes=2MB
+          stdout_logfile_backups=5
+          stdout_capture_maxbytes=2MB
+          stdout_events_enabled=false
+          redirect_stderr=true
+          EOF
+          scp -o UserKnownHostsFile=./known_hosts -P $PORT spring.conf $USER@$HOST:/srv/conf/supervisor.d/spring.conf
+          rm spring.conf
+      - name: Add chat ids
+        run: |
+          mkdir -p model-data/chat-ids
+          touch model-data/chat-ids/${{ secrets.CHAT_ID }}
+      - name: Copy code
+        run: |
+          rsync -ae "ssh -o UserKnownHostsFile=./known_hosts -p $PORT" --ignore-existing --include='dist/***' --include='model-data/***' --include='.env' --include='package.json' --exclude='*' ./ $USER@$HOST:/srv/spring/
+      - name: Apply changes
+        run: |
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl reread
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST /usr/local/bin/rosti bun 1.1.21
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl restart spring

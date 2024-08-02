@@ -1,0 +1,21 @@
+# Dependency directories
+node_modules/
+
+# dotenv environment variable files
+.env
+
+# Model data
+model-data/*
+!model-data/system
+model-data/system/*
+!model-data/system/*.default.*
+
+# Bun files
+.nx/
+bun.lockb
+
+# Editor files
+.vscode/
+
+# Built files
+dist/

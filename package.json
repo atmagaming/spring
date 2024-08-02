@@ -1,0 +1,36 @@
+{
+  "name": "spring",
+  "module": "index.ts",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Spring - System of Progressive Intelligence Generation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elumixor/spring"
+  },
+  "scripts": {
+    "start": "bun run ./dist/index.js",
+    "dev": "bun run ./src/index.ts",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --sourcemap",
+    "lint": "bun run eslint --ext .ts .",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@elumixor/eslint": "^0.1.3",
+    "@elumixor/frontils": "2.4.2",
+    "@grammyjs/emoji": "^1.2.0",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.5",
+    "grammy": "^1.28.0",
+    "marked": "^13.0.3",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.53.2",
+    "types-json": "^4.0.1"
+  }
+}

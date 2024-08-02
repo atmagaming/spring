@@ -1,0 +1,9 @@
+{
+    "extends": ["./node_modules/@elumixor/eslint"],
+    "parserOptions": {
+        "project": "./tsconfig.json",
+        "ecmaFeatures": {
+            "modules": true
+        }
+    }
+}
