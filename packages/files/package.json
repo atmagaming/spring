@@ -1,0 +1,19 @@
+{
+  "name": "files",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "bun run ./dist/index.js",
+    "dev": "bun run ./src/index.ts",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+    "lint": "bun run eslint --ext .ts .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "grammy": "^1.28.0",
+    "marked": "^13.0.3",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.53.2",
+    "types-json": "^4.0.1"
+  }
+}

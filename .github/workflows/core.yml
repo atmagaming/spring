@@ -1,10 +1,11 @@
-# .github/workflows/rosti_deploy.yml
-
-name: Deploy into Roští.cz
+name: Deploy spring/core into Roští.cz
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+    paths:
+      - "packages/core/**"
 
 jobs:
   deploy:

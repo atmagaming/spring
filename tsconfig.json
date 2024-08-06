@@ -22,8 +22,6 @@
 
     /* Custom */
     "experimentalDecorators": true,
-    "verbatimModuleSyntax": true,
-    "baseUrl": "./src"
-  },
-  "include": ["*.d.ts", "src", "tests"]
+    "verbatimModuleSyntax": true
+  }
 }

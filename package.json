@@ -3,20 +3,32 @@
   "module": "index.ts",
   "type": "module",
   "version": "1.0.0",
+  "private": true,
   "description": "Spring - System of Progressive Intelligence Generation",
   "repository": {
     "type": "git",
     "url": "https://github.com/elumixor/spring"
   },
   "scripts": {
-    "start": "bun run ./dist/index.js",
-    "dev": "bun run ./src/index.ts",
-    "build": "bun build ./src/index.ts --outdir ./dist --target bun --sourcemap",
+    "build": "bun run --filter '*' build",
+    "dev": "bun run --filter '*' dev",
     "lint": "bun run eslint --ext .ts .",
-    "test": "bun test"
+    "pc:commit-message": "bun run ./hooks/commit-message.ts",
+    "prepare": "husky"
   },
+  "workspaces": [
+    "packages/*"
+  ],
+  "pre-commit": [
+    "pc:commit-message"
+  ],
+  "post-commit": [
+    "pc:commit-message"
+  ],
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "husky": "^9.1.4",
+    "identify": "^0.1.5"
   },
   "peerDependencies": {
     "typescript": "^5.5.0"
@@ -26,11 +38,6 @@
     "@elumixor/frontils": "2.4.2",
     "@grammyjs/emoji": "^1.2.0",
     "chalk": "^5.3.0",
-    "dotenv": "^16.4.5",
-    "grammy": "^1.28.0",
-    "marked": "^13.0.3",
-    "node-fetch": "^3.3.2",
-    "openai": "^4.53.2",
-    "types-json": "^4.0.1"
+    "dotenv": "^16.4.5"
   }
 }

@@ -1,8 +1,8 @@
 import { all, EventEmitter } from "@elumixor/frontils";
 import type { AiModel } from "ai-model";
+import type { ChunkedMessage } from "utils";
 import { ModelParameters } from "./parameters";
 import { State } from "./state";
-import type { ChunkedMessage } from "utils";
 
 export class BehavioralCore {
     readonly sendMessageRequested = new EventEmitter<ChunkedMessage | string>();
