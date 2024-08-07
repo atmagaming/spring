@@ -13,17 +13,10 @@
     "build": "bun run --filter '*' build",
     "dev": "bun run --filter '*' dev",
     "lint": "bun run eslint --ext .ts .",
-    "pc:commit-message": "bun run ./hooks/commit-message.ts",
     "prepare": "husky"
   },
   "workspaces": [
     "packages/*"
-  ],
-  "pre-commit": [
-    "pc:commit-message"
-  ],
-  "post-commit": [
-    "pc:commit-message"
   ],
   "devDependencies": {
     "@types/bun": "latest",
