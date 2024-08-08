@@ -1,19 +1,26 @@
+import { di } from "@elumixor/di";
 import { all } from "@elumixor/frontils";
+import { FileClient, SyncedFile } from "@spring/file-client";
 import type { AiModel } from "ai-model";
 import chalk from "chalk";
 import type { ChatBot } from "chat-bot";
-import fs from "fs/promises";
 import type { Context } from "grammy";
 import { ChunkedMessage, joinChunks } from "utils";
 import { BehavioralCore } from "./behavioral-core";
 
 export class Spring {
     private readonly behavior;
+    private readonly chatIdFile;
+
     constructor(
         private readonly chat: ChatBot,
         private readonly aiModel: AiModel,
     ) {
+        const fileClient = new FileClient(process.env.FILE_SERVER_URL);
+        di.provide(FileClient, fileClient);
+
         this.behavior = new BehavioralCore(aiModel);
+        this.chatIdFile = new SyncedFile(fileClient, "./chat-id.txt", "text");
 
         // Register event handlers from the chat
         chat.commandReceived.subscribe(({ ctx, command }) => this.onCommand(ctx, command));
@@ -45,7 +52,7 @@ export class Spring {
     /** This is the main part of execution */
     private onUserMessage(text: string) {
         log(`${chalk.cyan("User:")} ${text}`);
-        this.behavior.acceptMessage(text);
+        void this.behavior.acceptMessage(text);
     }
 
     private async messageUser(text: string | ChunkedMessage) {
@@ -95,10 +102,8 @@ export class Spring {
     /* Utils */
 
     private async setUpChatId() {
-        // Read the chat ID from the file. More complex logic can be added here.
-        const chatIDsFolder = "./model-data/chat-ids/";
-        const files = await fs.readdir(chatIDsFolder);
-        const chatID = Number(files.first);
+        const id = await this.chatIdFile.initialize();
+        const chatID = Number(id.trim());
         log(`Communicating with the last chat ID ${chatID}`);
         this.chat.chatId = chatID;
     }

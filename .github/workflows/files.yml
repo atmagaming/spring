@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./packages/files
+        working-directory: packages/file-server
     env:
       HOST: ssh.rosti.cz
       USER: app

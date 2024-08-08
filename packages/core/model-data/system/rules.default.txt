@@ -1,1 +1,0 @@
-Respond concisely. Use as few words as possible while accurately answering the user's question.

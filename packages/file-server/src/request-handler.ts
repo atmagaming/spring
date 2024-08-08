@@ -45,10 +45,6 @@ export class RequestHandler {
             }
 
             if (pathname === "/write") {
-                // Show headers
-                // eslint-disable-next-line no-console
-                console.log(req.headers);
-
                 // Parse form data from the request
                 const formData = await req.formData();
                 const id = formData.get("id");
@@ -62,6 +58,22 @@ export class RequestHandler {
 
                 await this.fileHandler.writeFile(id, new Uint8Array(await content.arrayBuffer()));
                 return new Response("OK");
+            }
+
+            if (pathname === "/initFile") {
+                // Parse form data from the request
+                const formData = await req.formData();
+                const id = formData.get("id");
+                const defaultContent = formData.get("defaultContent");
+
+                if (!id || !defaultContent)
+                    return new Response("Bad Request. Missing 'id' or 'defaultContent' field", { status: 400 });
+
+                if (typeof id !== "string" || !(defaultContent instanceof Blob))
+                    return new Response("Bad Request. Invalid 'id' or 'content' field", { status: 400 });
+
+                const result = await this.fileHandler.initFile(id, new Uint8Array(await defaultContent.arrayBuffer()));
+                return new Response(result);
             }
 
             if (pathname === "/mkdir") {

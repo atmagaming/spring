@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./packages/core
+        working-directory: packages/core
     env:
       HOST: ssh.rosti.cz
       USER: app
@@ -62,13 +62,9 @@ jobs:
           EOF
           scp -o UserKnownHostsFile=./known_hosts -P $PORT spring.conf $USER@$HOST:/srv/conf/supervisor.d/spring.conf
           rm spring.conf
-      - name: Add chat ids
-        run: |
-          mkdir -p model-data/chat-ids
-          touch model-data/chat-ids/${{ secrets.CHAT_ID }}
       - name: Copy code
         run: |
-          rsync -ae "ssh -o UserKnownHostsFile=./known_hosts -p $PORT" --ignore-existing --include='dist/***' --include='model-data/***' --include='.env' --include='package.json' --exclude='*' ./ $USER@$HOST:/srv/spring/
+          rsync -ae "ssh -o UserKnownHostsFile=./known_hosts -p $PORT" --delete --include='dist/***' --include='.env' --include='package.json' --exclude='*' ./ $USER@$HOST:/srv/spring/
       - name: Apply changes
         run: |
           ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl reread

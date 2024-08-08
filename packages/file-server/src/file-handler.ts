@@ -29,7 +29,14 @@ export class FileHandler {
     }
 
     async writeFile(id: string, content: Uint8Array) {
+        await this.mkdir(path.dirname(id));
         return fs.writeFile(this.p(id), content);
+    }
+
+    async initFile(id: string, defaultContent: Uint8Array) {
+        if (await this.exists(id)) return this.readFile(id);
+        await this.writeFile(id, defaultContent);
+        return Buffer.from(defaultContent);
     }
 
     async mkdir(id: string) {
