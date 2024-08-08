@@ -1,4 +1,5 @@
-name: Deploy spring/files into Roští.cz
+# Deploy spring/files into Roští.cz
+name: Deploy - File Server
 
 on:
   push:

@@ -1,4 +1,5 @@
-name: Deploy spring/core into Roští.cz
+# Deploy spring/core into Roští.cz
+name: Deploy - Core
 
 on:
   push:
