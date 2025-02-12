@@ -6,7 +6,7 @@ on:
     branches:
       - master
     paths:
-      - "packages/files/**"
+      - "packages/file-server/**"
       - ".github/workflows/files.yml"
 
 jobs:
@@ -30,37 +30,22 @@ jobs:
           ssh-private-key: ${{ secrets.KEY }}
       - name: Setup hostkey
         run: |
-          echo "ssh.rosti.cz ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCKQgpt6DZ+VEEwjSx/yRRGqBjlsR0rNJh7DU2xu87mViM0hCd7ZrpAQEA04AVrUhtaNsNBFAeHGY4qTcnKbJ5ygu2buCvHv/2f3rSrQew8jRFhTZSCCcvv35sVSQqn56ijxw2kYLtSUl9NRFlMjwDmRpdjDUayc4ecze5FlCORL2lO7mdBxutoDhaUJa6q9KMq8jjYdDUxBwA6+nWtWvIDP4RPBLShD9DYZdEj/kuV3LJerLoFbk2Ag6jiHr/WRAwBDQizLbBcthtl+ugZvKWv7X5t+yH4WjpMsKMCfujqinIa4BQP11MHznd297dpapJQDm/NeAUaMEEwjDGwIVhB" > ./known_hosts
+          echo "ssh.rosti.cz ssh-rsa ${{ secrets.ROSTI_SSH_RSA }}" > ./known_hosts
       - name: Dependencies
         run: |
-          pwd
-          ls -la
           bun install
       - name: Build
         run: |
-          pwd
-          ls -la
           bun run build
+      - name: Setup Bun
+        run: |
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST /usr/local/bin/rosti bun ${{ vars.BUN_VERSION }}
       - name: Setup Supervisord
         run: |
-          cat << EOF > files.conf
-          [program:files]
-          command=/srv/bin/primary_tech/bun start
-          environment=PATH="/srv/bin/primary_tech:/usr/local/bin:/usr/bin:/bin:/srv/.npm-packages/bin"
-          stopasgroup=true
-          directory=/srv/files
-          process_name=files
-          autostart=true
-          autorestart=true
-          stdout_logfile=/srv/log/files.log
-          stdout_logfile_maxbytes=2MB
-          stdout_logfile_backups=5
-          stdout_capture_maxbytes=2MB
-          stdout_events_enabled=false
-          redirect_stderr=true
-          EOF
-          scp -o UserKnownHostsFile=./known_hosts -P $PORT files.conf $USER@$HOST:/srv/conf/supervisor.d/files.conf
-          rm files.conf
+          scp -o UserKnownHostsFile=./known_hosts -P $PORT ../../deploy/files.conf $USER@$HOST:/srv/conf/supervisor.d/files.conf
+      - name: Setup Nginx
+        run: |
+          scp -o UserKnownHostsFile=./known_hosts -P $PORT ../../deploy/nginx.conf $USER@$HOST:/srv/conf/nginx.d/app.conf
       - name: Copy code
         run: |
           pwd
@@ -70,5 +55,5 @@ jobs:
       - name: Apply changes
         run: |
           ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl reread
-          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST /usr/local/bin/rosti bun ${{ vars.BUN_VERSION }}
           ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl restart files
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl restart nginx

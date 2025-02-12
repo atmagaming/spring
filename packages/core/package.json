@@ -6,6 +6,7 @@
     "start": "bun run ./dist/index.js",
     "dev": "bun run ./src/index.ts",
     "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+    "get-chat-id": "bun run ./src/scripts-chat-id.ts",
     "lint": "bun run eslint --ext .ts .",
     "test": "bun test"
   },

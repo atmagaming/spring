@@ -10,7 +10,7 @@ export class ChatBot {
     readonly reactionsChanged = new AsyncEventEmitter<{ ctx: Context; emojiAdded: Emojis; emojiRemoved: Emojis }>();
     readonly commandReceived = new AsyncEventEmitter<{ ctx: Context; command: string }>();
 
-    private readonly bot = new Bot(process.env.BOT_TOKEN);
+    private readonly bot = new Bot(import.meta.env.BOT_TOKEN);
     private readonly commandsMap = new Map<string, (command: string) => Promise<void>>();
 
     chatId?: undefined | number;

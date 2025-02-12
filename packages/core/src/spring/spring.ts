@@ -16,7 +16,7 @@ export class Spring {
         private readonly chat: ChatBot,
         private readonly aiModel: AiModel,
     ) {
-        const fileClient = new FileClient(process.env.FILE_SERVER_URL);
+        const fileClient = new FileClient(import.meta.env.FILE_SERVER_URL);
         di.provide(FileClient, fileClient);
 
         this.behavior = new BehavioralCore(aiModel);

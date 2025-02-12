@@ -19,7 +19,7 @@ interface IChatMessage {
 }
 
 export class AiModel {
-    private readonly client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    private readonly client = new OpenAI({ apiKey: import.meta.env.OPENAI_API_KEY });
 
     /* Main public API functions */
 
