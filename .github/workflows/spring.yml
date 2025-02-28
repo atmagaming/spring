@@ -1,0 +1,61 @@
+# Deploy spring/core into Roští.cz
+name: Deploy - Spring
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "packages/spring/**"
+      - ".github/workflows/spring.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/spring
+    env:
+      HOST: ssh.rosti.cz
+      USER: app
+      PORT: ${{ secrets.PORT }}
+      NODE_VERSION: 22.4.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.KEY }}
+      - name: Setup hostkey
+        run: |
+          echo "ssh.rosti.cz ssh-rsa ${{ secrets.ROSTI_SSH_RSA }}" > ./known_hosts
+      - name: env
+        run: |
+          cat << EOF > .env
+          ${{ secrets.ENV }}
+          EOF
+      - name: Dependencies
+        run: |
+          bun install
+      - name: Build
+        run: |
+          bun run build
+      - name: Setup Bun
+        run: |
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST /usr/local/bin/rosti bun ${{ vars.BUN_VERSION }}
+      - name: Setup Supervisord
+        run: |
+          scp -o UserKnownHostsFile=./known_hosts -P $PORT ../../deploy/spring.conf $USER@$HOST:/srv/conf/supervisor.d/spring.conf
+      - name: Setup Nginx
+        run: |
+          scp -o UserKnownHostsFile=./known_hosts -P $PORT ../../deploy/nginx.conf $USER@$HOST:/srv/conf/nginx.d/app.conf
+      - name: Copy code
+        run: |
+          rsync -ae "ssh -o UserKnownHostsFile=./known_hosts -p $PORT" --delete --include='dist/***' --include='.env' --include='package.json' --exclude='*' ./ $USER@$HOST:/srv/spring/
+      - name: Apply changes
+        run: |
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl reread
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl restart spring
+          ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl restart nginx
