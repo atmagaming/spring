@@ -4,13 +4,13 @@ import { Apis } from "./apis";
 import { authorize } from "./authorize";
 import { agreementsFolderId, peopleRange, peopleSheetId, peopleSheetName, templatesRange } from "./config";
 import { Doc } from "./doc";
-import type { ContractType, IPersonData, IPersonTableData } from "./person-data";
+import type { Agreement, IPersonData, IPersonTableData } from "./person-data";
 import { getDocsUrl, getFileId } from "./utils";
 
 export class ContractsManager {
     private apis!: Apis;
-    private templates!: Map<ContractType, string>;
-    private people!: Map<string, IPersonTableData & { index: number }>;
+    private templates!: Map<Agreement, string>;
+    people!: Map<string, IPersonTableData & { index: number }>;
     private initialized = false;
 
     async init() {
@@ -30,7 +30,7 @@ export class ContractsManager {
                 spreadsheetId: peopleSheetId,
                 range: templatesRange,
             });
-            const values = (response.data.values ?? []) as [ContractType, string, string][];
+            const values = (response.data.values ?? []) as [Agreement, string, string][];
             const selected = values.map(([name, , link]) => [name, nonNull(getFileId(link))] as const);
             this.templates = new Map(selected);
         }
@@ -58,7 +58,7 @@ export class ContractsManager {
         }
     }
 
-    getTemplateId(name: ContractType) {
+    getTemplateId(name: Agreement) {
         return this.templates.get(name);
     }
 
@@ -119,7 +119,7 @@ export class ContractsManager {
         });
     }
 
-    async fromTemplate(personName: string, templateName: ContractType) {
+    async fromTemplate(personName: string, templateName: Agreement) {
         // Get person's folder
         const personFolderId = await this.getPersonFolder(personName);
 
@@ -157,7 +157,7 @@ export class ContractsManager {
         return buffer;
     }
 
-    async createAgreement(person: IPersonData, type: ContractType) {
+    async createAgreement(person: IPersonData, type: Agreement) {
         let doc;
 
         // Add person if they don't exist

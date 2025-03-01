@@ -38,6 +38,8 @@ function action<const TArgs extends z.ZodObject<Record<string, z.ZodType>>>(opti
 const contractsManager = new ContractsManager();
 const sign = new DropboxSign();
 
+const agreementType = z.enum(["NDA", "WHA"] as const);
+
 export const actions = [
     // action({
     //     name: "log",
@@ -65,40 +67,52 @@ export const actions = [
     }),
     action({
         name: "nda",
-        intent: "Create NDA",
+        intent: "Create Agreement",
         args: z.object({
-            name: z.string(),
-            email: z.string(),
-            passport: z.string(),
-            authority: z.string(),
-            issueDate: z.object({
-                day: z.number(),
-                month: z.number(),
-                year: z.number(),
+            agreementType,
+            personData: z.object({
+                name: z.string(),
+                email: z.string(),
+                passport: z.string(),
+                authority: z.string(),
+                issueDate: z.object({
+                    day: z.number(),
+                    month: z.number(),
+                    year: z.number(),
+                }),
             }),
         }),
         async run(ctx) {
             await contractsManager.init();
 
-            const name = ctx.args.name;
-            ctx.respond(`Yes, I will create an NDA for ${name}:\n${JSON.stringify(ctx.args, null, 2)}`);
-            const { day, month, year } = ctx.args.issueDate;
+            const { agreementType, personData } = ctx.args;
+            const {
+                name,
+                issueDate: { day, month, year },
+                ...rest
+            } = personData;
+
             const issueDate = formatDate(new Date(year, month - 1, day));
-            const id = await contractsManager.createAgreement({ ...ctx.args, issueDate }, "NDA");
+            ctx.respond(
+                `Yes, I will create an ${agreementType} for ${name}:\n${Object.entries({ ...rest, issueDate })
+                    .map(([key, value]) => `  ${key}: ${value}`)
+                    .join("\n")}`,
+            );
+            const id = await contractsManager.createAgreement({ ...personData, issueDate }, agreementType);
 
             ctx.respond(
-                `NDA created with id: ${id}\nHere's the link to the file:\n\n${getDocsUrl(id)}\n\n` +
-                    "I will now send the NDA as a PDF",
+                `${agreementType} created with id: ${id}\nHere's the link to the file:\n\n${getDocsUrl(id)}\n\n` +
+                    `I will now send the ${agreementType} as a PDF`,
             );
 
             log.info("Getting pdf file...");
-            const bufferNDA = await contractsManager.getPdf(nonNull(id));
+            const buffer = await contractsManager.getPdf(nonNull(id));
 
             log.info("Sending pdf file...");
             await ctx.sendFile({
-                buffer: bufferNDA,
-                caption: `NDA - ${name}`,
-                fileName: `NDA ${name}.pdf`,
+                buffer,
+                caption: `${agreementType} - ${name}`,
+                fileName: `${agreementType} ${name}.pdf`,
             });
 
             log.info("PDF sent successfully");
@@ -106,21 +120,22 @@ export const actions = [
     }),
     action({
         name: "sign",
-        intent: "Send NDA document for signing",
+        intent: "Send agreement for signing",
         args: z.object({
+            agreementType,
             personName: z.string(),
         }),
         async run(ctx) {
             await contractsManager.init();
 
-            const { personName: name } = ctx.args;
+            const { personName: name, agreementType } = ctx.args;
 
-            log.info(`Getting the NDA link for ${name}`);
-            const { NDAUrl: url, email } = contractsManager.getPerson(name) ?? {};
+            log.info(`Getting the ${agreementType} link for ${name}`);
+            const { [`${agreementType}Url` as const]: url, email } = contractsManager.getPerson(name) ?? {};
 
             if (!url) {
-                log.warn(`No NDA found for ${name}`);
-                ctx.respond(`No NDA found for ${name}`);
+                log.warn(`No ${agreementType} found for ${name}`);
+                ctx.respond(`No ${agreementType} found for ${name}`);
                 return;
             }
 
@@ -132,26 +147,58 @@ export const actions = [
 
             log.info("Getting pdf file...");
             const id = getFileId(url);
-            const bufferNDA = await contractsManager.getPdf(nonNull(id));
+            const buffer = await contractsManager.getPdf(nonNull(id));
 
             log.info("Sending pdf file for signing...");
             const link = await sign.sendFile({
-                buffer: bufferNDA,
+                buffer,
                 signer1: {
-                    name: "Vladyslav Yazykov",
-                    emailAddress: "ceo@atmagaming.com",
+                    name: import.meta.env.SIGNER_NAME,
+                    emailAddress: import.meta.env.SIGNER_EMAIL,
                 },
                 signer2: {
                     name,
                     emailAddress: email,
                 },
-                title: "NDA - ATMA | Hypocrisy",
-                subject: "The NDA we talked about",
+                title: `${agreementType} - ATMA | Hypocrisy`,
+                subject: `The ${agreementType} we talked about`,
                 message: "",
             });
 
             log.info("File sent");
             ctx.respond(`File sent for signing to ${name} at ${email}:\n\nLink for you to sign: ${link}`);
+        },
+    }),
+    action({
+        name: "remove person",
+        intent: "Remove person from the database",
+        args: z.object({
+            personName: z.string(),
+        }),
+        async run(ctx) {
+            await contractsManager.init();
+
+            const { personName } = ctx.args;
+            await contractsManager.removePerson(personName);
+            ctx.respond(`Person ${personName} removed from database`);
+        },
+    }),
+    action({
+        name: "list people",
+        intent: "List people in the database",
+        args: z.object({}),
+        async run(ctx) {
+            await contractsManager.init();
+            const { people } = contractsManager;
+
+            let peopleStr = "";
+            //  {
+            for (const { name, email, index, ..._filesUrls } of people.values())
+                peopleStr += `${index}. ${name} - ${email}\n`;
+            // for (const [type, url] of Object.entries(filesUrls)) peopleStr += `  ${type}: ${url}\n`;
+            // }
+
+            ctx.respond(peopleStr);
         },
     }),
     action({

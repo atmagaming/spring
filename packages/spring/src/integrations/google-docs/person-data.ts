@@ -1,4 +1,4 @@
-export type ContractType = "NDA" | "WHA";
+export type Agreement = "NDA" | "WHA";
 
 type AddUrl<T extends string> = `${T}Url`;
 
@@ -10,4 +10,4 @@ export interface IPersonData {
     issueDate: string;
 }
 
-export type IPersonTableData = { name: string; email: string } & { [k in AddUrl<ContractType>]?: string };
+export type IPersonTableData = { name: string; email: string } & { [k in AddUrl<Agreement>]?: string };
