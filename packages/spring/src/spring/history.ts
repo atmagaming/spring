@@ -1,16 +1,18 @@
-import { FileClient, SyncedJsonFile } from "file-client";
+import { di } from "@elumixor/di";
+import type { TextResponse } from "chat-bot";
 import { maxHistorySize, paths } from "config";
+import { FileClient, SyncedJsonFile } from "file-client";
+import { fullMessage } from "utils";
 import type { ChatHistory, ChatMessage } from "./state";
 import type { MessageRole } from "./types";
-import type { ChunkedMessage } from "utils";
 
 export class History extends SyncedJsonFile<ChatHistory> {
-    constructor(fileClient: FileClient) {
-        super(fileClient, paths.history, []);
+    constructor() {
+        super(di.inject(FileClient), paths.history, []);
     }
 
-    async addMessage(role: MessageRole, message: string | ChunkedMessage) {
-        const content = typeof message === "string" ? message : await message.fullMessage;
+    async addMessage(role: MessageRole, message: TextResponse) {
+        const content = await fullMessage(message);
         const v = this.value;
         v.push({ role: role === "user" ? "user" : "assistant", content });
         if (v.length > maxHistorySize) v.shift();

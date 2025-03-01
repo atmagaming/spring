@@ -1,24 +1,44 @@
-import { all, AsyncEventEmitter, EventEmitter } from "@elumixor/frontils";
-import type { AI } from "ai";
-import type { ISendFileData, TextBotMessage } from "chat-bot";
-import type { BotResponse } from "utils/types";
-import { actions } from "./actions";
+import { di } from "@elumixor/di";
+import { all } from "@elumixor/frontils";
+import { AI } from "ai";
+import { ChatBot, type ISendFileData, type TextBotMessage, type TextResponse } from "chat-bot";
+import { DropboxSign } from "integrations/dropbox-sign";
+import { ContractsManager } from "integrations/google-docs";
+import { fullMessage } from "utils";
+import {
+    agreementAction,
+    listPeopleAction,
+    parsePassportAction,
+    removePersonAction,
+    respondAction,
+    signAction,
+    type IAction,
+} from "./actions";
 import { ModelParameters } from "./parameters";
 import { State } from "./state";
-import { fullMessage } from "utils";
 
 export class BehavioralCore {
     selfName = "Spring";
     userName = "User";
 
-    readonly sendMessageRequested = new EventEmitter<BotResponse>();
-    readonly sendFileRequested = new AsyncEventEmitter<ISendFileData>();
+    private readonly ai = di.inject(AI);
+    private readonly chat = di.inject(ChatBot);
 
     private readonly state = new State();
     private readonly parameters = new ModelParameters();
-    private readonly actions = actions;
+    readonly actions = {
+        respondAction,
+        agreementAction,
+        signAction,
+        removePersonAction,
+        listPeopleAction,
+        parsePassportAction,
+    };
 
-    constructor(private readonly aiModel: AI) {}
+    readonly integrations = {
+        contractsManager: new ContractsManager(),
+        dropboxSign: new DropboxSign(),
+    };
 
     get voicePreferred() {
         return this.parameters.getBool("voicePreferred");
@@ -40,30 +60,48 @@ export class BehavioralCore {
         await all(this.state.reset(), this.parameters.reset());
     }
 
-    async acceptMessage(message: TextBotMessage) {
-        const { text, photo: media } = message;
+    async handleUserMessage(message: TextBotMessage) {
+        await this.state.history.addMessage("user", message.text);
 
-        await this.state.history.addMessage("user", text);
-        const { action, args } = await this.aiModel.selectAction(text, actions, this.state.history.value);
+        // We do it in two steps: 1. select action, 2. select arguments
+        // The reason is that it's impossible for us to ensure type safety/correct structure
+        // if we try to do both at 1 step, as different actions have different arguments
+        const action = await this.ai.selectAction(this.actions, this.state.history.value);
+        const args = await this.ai.getActionArgs(action, this.state.history.value);
 
         log.log(`Taking action: ${action.intent} with args: ${JSON.stringify(args)}`);
 
-        await action.run({
-            media,
-            text: message.text,
-            args,
-            complete: (text) =>
-                this.aiModel.textCompletion(text, {
-                    chunk: "logical",
-                    systemMessage: this.state.systemMessage,
-                    history: this.state.history.value,
-                }),
-            respond: (data) => {
-                this.sendMessageRequested.emit(data);
-                void fullMessage(data).then((msg) => this.state.history.addMessage("self", msg));
-            },
-            sendFile: (data) => this.sendFileRequested.emit(data),
-            addToHistory: (role, message) => this.state.history.addMessage(role, message),
-        });
+        await action.run({ message, args, behavior: this });
     }
+
+    async selectAction() {
+        return this.ai.selectAction(this.actions, this.state.history.value);
+    }
+
+    async getActionArgs(action: IAction) {
+        return this.ai.getActionArgs(action, this.state.history.value);
+    }
+
+    async respond({ file, text, ignoreHistory = false }: ResponseData) {
+        if (file)
+            // if some file data is provided - send file
+            await this.chat.sendFile({ ...file, caption: text ? await fullMessage(text) : undefined });
+        else if (text) {
+            // Otherwise, send text, unless voice is preferred
+            if (!this.voicePreferred) await this.chat.sendText(text);
+            else {
+                const voiceBuffer = await this.ai.textToVoice(await fullMessage(text));
+                await this.chat.sendVoice(voiceBuffer);
+            }
+        }
+
+        // Add to history
+        if (!ignoreHistory && text) await this.state.history.addMessage("self", text);
+    }
+}
+
+interface ResponseData {
+    file?: ISendFileData;
+    text?: TextResponse;
+    ignoreHistory?: boolean;
 }

@@ -4,34 +4,30 @@ import { AI } from "ai";
 import chalk from "chalk";
 import { ChatBot, type BotMessage, type TextBotMessage } from "chat-bot";
 import { FileClient, SyncedFile } from "file-client";
-import { ChunkedMessage, joinChunks } from "utils";
 import { BehavioralCore } from "./behavioral-core";
 
+// todo: I don't know why this class exists. I feel like it's not needed
 export class Spring {
     private readonly chat = di.inject(ChatBot);
-    private readonly aiModel = di.inject(AI);
-
+    private readonly ai = di.inject(AI);
     private readonly behavior;
     private readonly chatIdFile;
 
     constructor() {
+        // todo: We can now remove this file client/server logic as we have prod env and separate prod bot
         const fileClient = new FileClient(import.meta.env.FILE_SERVER_URL);
         di.provide(FileClient, fileClient);
 
-        this.behavior = new BehavioralCore(this.aiModel);
+        this.behavior = new BehavioralCore();
         this.chatIdFile = new SyncedFile(fileClient, "./chat-id.txt", "text");
 
         // Register event handlers from the chat
         this.chat.commandReceived.subscribe((message) => this.onCommand(message));
         this.chat.textReceived.subscribe((message) => this.onUserMessage(message));
         this.chat.voiceReceived.subscribe(async (message) => {
-            message.parsedText = await this.aiModel.voiceToText(await message.voice);
+            message.parsedText = await this.ai.voiceToText(await message.voice);
             this.onUserMessage(message as TextBotMessage);
         });
-
-        // Register event handlers from the behavior
-        this.behavior.sendMessageRequested.subscribe((text) => this.messageUser(text));
-        this.behavior.sendFileRequested.subscribe(async (fileData) => void (await this.chat.sendFile(fileData)));
     }
 
     async wakeUp() {
@@ -53,20 +49,7 @@ export class Spring {
     /** This is the main part of execution */
     private onUserMessage(message: TextBotMessage) {
         log.log(`${chalk.cyan("User:")} ${message.text}`);
-        void this.behavior.acceptMessage(message);
-    }
-
-    private async messageUser(text: string | PromiseLike<string> | ChunkedMessage) {
-        const isChunked = text instanceof ChunkedMessage;
-        if (!this.behavior.voicePreferred) {
-            if (!isChunked) log.log(`${chalk.green("Spring:")} ${await text}`);
-            else void text.fullMessage.then((message) => log.log(`${chalk.green("Spring:")} ${message}`));
-            return this.chat.sendText(await text);
-        }
-
-        const mergedText = !isChunked ? await text : await joinChunks(text);
-        const voiceBuffer = await this.aiModel.textToVoice(mergedText);
-        return this.chat.sendVoice(voiceBuffer);
+        void this.behavior.handleUserMessage(message);
     }
 
     /* Commands */

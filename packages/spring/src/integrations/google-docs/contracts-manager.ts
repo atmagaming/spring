@@ -4,7 +4,7 @@ import { Apis } from "./apis";
 import { authorize } from "./authorize";
 import { agreementsFolderId, peopleRange, peopleSheetId, peopleSheetName, templatesRange } from "./config";
 import { Doc } from "./doc";
-import type { Agreement, IPersonData, IPersonTableData } from "./person-data";
+import type { Agreement, IPersonData, IPersonTableData } from "./types";
 import { getDocsUrl, getFileId } from "./utils";
 
 export class ContractsManager {

@@ -1,6 +1,6 @@
 import { fetch } from "bun";
 import type { Context } from "grammy";
-import type { IFileData } from "./file-data";
+import type { IFileData } from "./types";
 import { nonNull } from "@elumixor/frontils";
 
 export class BotMessage {

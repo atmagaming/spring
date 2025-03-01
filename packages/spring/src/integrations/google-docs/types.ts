@@ -1,4 +1,7 @@
-export type Agreement = "NDA" | "WHA";
+import { z } from "zod";
+
+export const agreementType = z.enum(["NDA", "WHA"] as const);
+export type Agreement = z.infer<typeof agreementType>;
 
 type AddUrl<T extends string> = `${T}Url`;
 

@@ -1,5 +1,5 @@
 import { di } from "@elumixor/di";
-import { nonNullAssert } from "@elumixor/frontils";
+import { nonNull, nonNullAssert } from "@elumixor/frontils";
 import { defaultTextOptions, defaultTranscriptionModel, defaultVoiceOptions } from "config";
 import OpenAI, { toFile } from "openai";
 import { zodResponseFormat } from "openai/helpers/zod.mjs";
@@ -55,14 +55,8 @@ export class AI {
         return response as unknown as string;
     }
 
-    async selectAction<TActions extends IAction[]>(prompt: string, actions: TActions, history: IChatMessage[]) {
-        // We do it in two steps: 1. select action, 2. select arguments
-        // The reason is that it's impossible for us to ensure type safety/correct structure
-        // if we try to do both at 1 step, as different actions have different arguments
-
-        /* 1. Get action name */
-
-        const names = actions.map((action) => action.name);
+    async selectAction<TActions extends Record<string, IAction>>(actions: TActions, history: IChatMessage[]) {
+        const names = Object.keys(actions);
         const actionNameType = z.object({
             action: z.enum([names.first, ...names.skip(1)]),
         });
@@ -75,21 +69,15 @@ export class AI {
                     content: `
                     The user provides you with dialogue, ending with a user message.
                     You have a list of actions { name, intent }[] that you need to chose from.
-                    You should output the name of the most appropriate action.
+                    You should output the name of the most appropriate action you need to take.
 
                     Here is the list of actions and intents:
-                    ${JSON.stringify(
-                        actions.map(({ name, intent }) => ({ name, intent })),
-                        null,
-                        2,
-                    )}
+                    ${Object.entries(actions)
+                        .map(([name, { intent }]) => `${name}: ${intent}`)
+                        .join("\n")}
                     `,
                 },
                 ...history,
-                {
-                    role: "user",
-                    content: prompt,
-                },
             ],
             response_format: zodResponseFormat(actionNameType, "action"),
         });
@@ -99,11 +87,12 @@ export class AI {
         if (nameRefusal) throw new Error(`Could not select action: ${nameRefusal}`);
         nonNullAssert(actionName);
 
-        const action = actions.find((a) => a.name === actionName.action);
-        nonNullAssert(action);
+        const action = actions[actionName.action];
 
-        /* 2. Fill in arguments values */
+        return nonNull(action);
+    }
 
+    async getActionArgs(action: IAction, history: IChatMessage[]) {
         const argumentsResponse = await this.client.beta.chat.completions.parse({
             model: defaultTextOptions.textModel,
             messages: [
@@ -112,15 +101,10 @@ export class AI {
                     content: `
                     Given user's message, fill in arguments values, for the following action:
 
-                    Action: ${action.name}
-                    Intent: ${action.intent}
+                    Action Intent: ${action.intent}
                     `,
                 },
                 ...history,
-                {
-                    role: "user",
-                    content: prompt,
-                },
             ],
             response_format: zodResponseFormat(action.args, "action"),
         });
@@ -128,9 +112,7 @@ export class AI {
         const { parsed: args, refusal: argsRefusal } = argumentsResponse.choices.first.message;
 
         if (argsRefusal) throw new Error(`Could not select arguments: ${argsRefusal}`);
-        nonNullAssert(args);
-
-        return { action, args };
+        return nonNull(args);
     }
 
     /* Text completion logic */

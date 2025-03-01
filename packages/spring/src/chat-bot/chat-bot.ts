@@ -9,7 +9,8 @@ import {
     type TextBotMessage,
     type VoiceBotMessage,
 } from "./bot-message";
-import type { ISendFileData } from "./file-data";
+import type { ISendFileData, TextResponse } from "./types";
+import { ChunkedMessage } from "utils";
 
 @di.injectable
 export class ChatBot {
@@ -49,12 +50,12 @@ export class ChatBot {
 
     /* Commands for sending messages to the user */
 
-    async sendText(text: string | AsyncIterable<string>) {
+    async sendText(text: TextResponse) {
         assert(this.chatId !== undefined, "Chat ID is not set.");
 
         // Send chunks recursively
-        if (typeof text !== "string") for await (const chunk of text) await this.sendText(chunk);
-        else await this.bot.api.sendMessage(this.chatId, text);
+        if (text instanceof ChunkedMessage) for await (const chunk of text) await this.sendText(chunk);
+        else await this.bot.api.sendMessage(this.chatId, await text);
     }
 
     async sendVoice(voice: ReadableStream) {
@@ -72,7 +73,7 @@ export class ChatBot {
         await this.bot.api.setMessageReaction(this.chatId, messageId, [reaction]);
     }
 
-    sendFile(file: ISendFileData) {
+    sendFile(file: ISendFileData & { caption?: string }) {
         assert(this.chatId !== undefined, "Chat ID is not set.");
         return this.bot.api.sendDocument(this.chatId, new InputFile(file.buffer, file.fileName), {
             caption: file.caption,

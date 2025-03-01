@@ -1,9 +1,9 @@
+import { di } from "@elumixor/di";
 import { all } from "@elumixor/frontils";
 import { paths } from "config";
-import { History } from "./history";
 import { FileClient, SyncedFile } from "file-client";
-import { di } from "@elumixor/di";
 import { defaultBehavior, defaultIdentity, defaultRules } from "./defaults";
+import { History } from "./history";
 
 export interface ChatMessage {
     role: "assistant" | "user";
@@ -14,7 +14,7 @@ export type ChatHistory = ChatMessage[];
 
 export class State {
     private readonly fileClient = di.inject(FileClient);
-    readonly history = new History(this.fileClient);
+    readonly history = new History();
     private readonly identityFile = new SyncedFile(this.fileClient, paths.system.identity, "text", {
         defaultValue: defaultIdentity,
     });
