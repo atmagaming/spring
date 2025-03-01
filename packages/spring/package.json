@@ -12,6 +12,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@dropbox/sign": "^1.8.0",
     "@elumixor/di": "^0.2.0",
     "@elumixor/frontils": "^2.7.0",
     "@grammyjs/emoji": "^1.2.0",
@@ -27,6 +28,8 @@
     "node-fetch": "^3.3.2",
     "open": "^10.1.0",
     "openai": "^4.53.2",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38",
     "types-json": "^4.0.1",
     "zod": "^3.24.2"
   },

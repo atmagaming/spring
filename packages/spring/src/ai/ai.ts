@@ -55,7 +55,7 @@ export class AI {
         return response as unknown as string;
     }
 
-    async selectAction<TActions extends IAction[]>(prompt: string, actions: TActions) {
+    async selectAction<TActions extends IAction[]>(prompt: string, actions: TActions, history: IChatMessage[]) {
         // We do it in two steps: 1. select action, 2. select arguments
         // The reason is that it's impossible for us to ensure type safety/correct structure
         // if we try to do both at 1 step, as different actions have different arguments
@@ -73,9 +73,9 @@ export class AI {
                 {
                     role: "system",
                     content: `
-                    The user provides you with a message.
+                    The user provides you with dialogue, ending with a user message.
                     You have a list of actions { name, intent }[] that you need to chose from.
-                    You should output the name of the action.
+                    You should output the name of the most appropriate action.
 
                     Here is the list of actions and intents:
                     ${JSON.stringify(
@@ -85,6 +85,7 @@ export class AI {
                     )}
                     `,
                 },
+                ...history,
                 {
                     role: "user",
                     content: prompt,
@@ -115,6 +116,7 @@ export class AI {
                     Intent: ${action.intent}
                     `,
                 },
+                ...history,
                 {
                     role: "user",
                     content: prompt,

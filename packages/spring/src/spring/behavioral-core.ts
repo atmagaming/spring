@@ -5,6 +5,7 @@ import type { BotResponse } from "utils/types";
 import { actions } from "./actions";
 import { ModelParameters } from "./parameters";
 import { State } from "./state";
+import { fullMessage } from "utils";
 
 export class BehavioralCore {
     selfName = "Spring";
@@ -43,7 +44,7 @@ export class BehavioralCore {
         const { text, photo: media } = message;
 
         await this.state.history.addMessage("user", text);
-        const { action, args } = await this.aiModel.selectAction(text, actions);
+        const { action, args } = await this.aiModel.selectAction(text, actions, this.state.history.value);
 
         log.log(`Taking action: ${action.intent} with args: ${JSON.stringify(args)}`);
 
@@ -57,7 +58,10 @@ export class BehavioralCore {
                     systemMessage: this.state.systemMessage,
                     history: this.state.history.value,
                 }),
-            respond: (data) => this.sendMessageRequested.emit(data),
+            respond: (data) => {
+                this.sendMessageRequested.emit(data);
+                void fullMessage(data).then((msg) => this.state.history.addMessage("self", msg));
+            },
             sendFile: (data) => this.sendFileRequested.emit(data),
             addToHistory: (role, message) => this.state.history.addMessage(role, message),
         });

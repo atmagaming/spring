@@ -76,32 +76,25 @@ export class Spring {
 
         switch (command) {
             case "ping":
-                await this.chat.sendText("Pong!");
-                return;
-            case "history":
-                await this.chat.sendText(this.behavior.historyString);
-                return;
-            case "systemMessage":
-                await this.chat.sendText(this.behavior.systemMessage);
-                return;
+                return this.chat.sendText("Pong!");
+            case "history": {
+                const { historyString } = this.behavior;
+                if (historyString.trim() === "") return this.chat.sendText("History is empty.");
+                return this.chat.sendText(this.behavior.historyString);
+            }
+            case "clearhistory":
             case "reset":
-                await this.reset();
-                return;
+                return this.behavior.reset();
+            case "systemMessage":
+                return this.chat.sendText(this.behavior.systemMessage);
             case "shutdown":
                 await this.sleep();
                 await this.chat.stop();
                 return;
             default:
-                await this.chat.sendText("(unknown command)");
-                return;
+                return this.chat.sendText("(unknown command)");
         }
     }
-
-    private async reset() {
-        await this.behavior.reset();
-    }
-
-    /* Utils */
 
     private async setUpChatId() {
         const id = await this.chatIdFile.initialize();

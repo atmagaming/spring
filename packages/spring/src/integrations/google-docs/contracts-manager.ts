@@ -1,4 +1,5 @@
 import { nonNull, notImplemented } from "@elumixor/frontils";
+import { formatDate } from "utils";
 import { Apis } from "./apis";
 import { authorize } from "./authorize";
 import { agreementsFolderId, peopleRange, peopleSheetId, peopleSheetName, templatesRange } from "./config";
@@ -13,16 +14,16 @@ export class ContractsManager {
     private initialized = false;
 
     async init() {
-        if (this.initialized) return;
+        if (!this.initialized) {
+            const auth = await authorize({
+                scope: ["https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive"],
+                tokenPath: "secret/google-token.json",
+                credentialsPath: "secret/google-oauth-credentials.json",
+            });
+
+            this.apis = new Apis(auth);
+        }
         this.initialized = true;
-
-        const auth = await authorize({
-            scope: ["https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive"],
-            tokenPath: "secret/google-token.json",
-            credentialsPath: "secret/google-oauth-credentials.json",
-        });
-
-        this.apis = new Apis(auth);
 
         {
             const response = await this.apis.sheets.spreadsheets.values.get({
@@ -189,13 +190,7 @@ export class ContractsManager {
         doc.replace("[AUTHORITY]", person.authority);
 
         // For date, use the current day
-        const date = new Date();
-        const formattedDate = new Intl.DateTimeFormat("en-GB", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric",
-        }).format(date);
-        doc.replace("[DATE]", formattedDate);
+        doc.replace("[DATE]", formatDate(new Date()));
         await doc.save();
 
         // Update person table

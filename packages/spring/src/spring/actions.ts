@@ -1,14 +1,14 @@
 import { nonNull, type Awaitable } from "@elumixor/frontils";
-import chalk from "chalk";
 import type { IFileData, ISendFileData } from "chat-bot";
 import { processDocument } from "integrations/algo-docs";
-import { ContractsManager, getDocsUrl } from "integrations/google-docs";
-import { tempfile, type ChunkedMessage } from "utils";
+import { DropboxSign } from "integrations/dropbox-sign";
+import { ContractsManager, getDocsUrl, getFileId } from "integrations/google-docs";
+import { formatDate, tempfile, type ChunkedMessage } from "utils";
 import { z } from "zod";
 import type { MessageRole } from "./types";
 
 export interface IAction<
-    TArgs extends z.ZodObject<Record<string, z.ZodString>> = z.ZodObject<Record<string, z.ZodString>>,
+    TArgs extends z.ZodObject<Record<string, z.ZodType>> = z.ZodObject<Record<string, z.ZodType>>,
 > {
     name: string;
     intent: string;
@@ -16,7 +16,7 @@ export interface IAction<
     run(ctx: IActionContext<z.infer<TArgs>>): Awaitable;
 }
 
-export interface IActionContext<TArgs extends Record<string, string>> {
+export interface IActionContext<TArgs extends Record<string, unknown>> {
     media?: Promise<IFileData | undefined>;
     text?: string;
     args: TArgs;
@@ -26,7 +26,7 @@ export interface IActionContext<TArgs extends Record<string, string>> {
     addToHistory(role: MessageRole, message: ChunkedMessage | string): PromiseLike<void>;
 }
 
-function action<const TArgs extends z.ZodType<Record<string, string>>>(options: {
+function action<const TArgs extends z.ZodObject<Record<string, z.ZodType>>>(options: {
     name: string;
     intent: string;
     args: TArgs;
@@ -36,22 +36,23 @@ function action<const TArgs extends z.ZodType<Record<string, string>>>(options: 
 }
 
 const contractsManager = new ContractsManager();
+const sign = new DropboxSign();
 
 export const actions = [
-    action({
-        name: "log",
-        intent: "log to server console",
-        args: z.object({
-            message: z.string(),
-        }),
-        run(ctx) {
-            const logString = ctx.args.message;
+    // action({
+    //     name: "log",
+    //     intent: "log to server console",
+    //     args: z.object({
+    //         message: z.string(),
+    //     }),
+    //     run(ctx) {
+    //         const logString = ctx.args.message;
 
-            log.log(`${chalk.gray("system:")} ${logString}`);
+    //         log.log(`${chalk.gray("system:")} ${logString}`);
 
-            ctx.respond(`[LOG]\n${logString}`);
-        },
-    }),
+    //         ctx.respond(`[LOG]\n${logString}`);
+    //     },
+    // }),
     action({
         name: "respond",
         intent: "respond to user",
@@ -70,14 +71,20 @@ export const actions = [
             email: z.string(),
             passport: z.string(),
             authority: z.string(),
-            issueDate: z.string(),
+            issueDate: z.object({
+                day: z.number(),
+                month: z.number(),
+                year: z.number(),
+            }),
         }),
         async run(ctx) {
             await contractsManager.init();
 
             const name = ctx.args.name;
             ctx.respond(`Yes, I will create an NDA for ${name}:\n${JSON.stringify(ctx.args, null, 2)}`);
-            const id = await contractsManager.createAgreement(ctx.args, "NDA");
+            const { day, month, year } = ctx.args.issueDate;
+            const issueDate = formatDate(new Date(year, month - 1, day));
+            const id = await contractsManager.createAgreement({ ...ctx.args, issueDate }, "NDA");
 
             ctx.respond(
                 `NDA created with id: ${id}\nHere's the link to the file:\n\n${getDocsUrl(id)}\n\n` +
@@ -91,9 +98,60 @@ export const actions = [
             await ctx.sendFile({
                 buffer: bufferNDA,
                 caption: `NDA - ${name}`,
-                fileName: `${name}.pdf`,
+                fileName: `NDA ${name}.pdf`,
             });
+
             log.info("PDF sent successfully");
+        },
+    }),
+    action({
+        name: "sign",
+        intent: "Send NDA document for signing",
+        args: z.object({
+            personName: z.string(),
+        }),
+        async run(ctx) {
+            await contractsManager.init();
+
+            const { personName: name } = ctx.args;
+
+            log.info(`Getting the NDA link for ${name}`);
+            const { NDAUrl: url, email } = contractsManager.getPerson(name) ?? {};
+
+            if (!url) {
+                log.warn(`No NDA found for ${name}`);
+                ctx.respond(`No NDA found for ${name}`);
+                return;
+            }
+
+            if (!email) {
+                log.warn(`No email found for ${name}`);
+                ctx.respond(`No email found for ${name}`);
+                return;
+            }
+
+            log.info("Getting pdf file...");
+            const id = getFileId(url);
+            const bufferNDA = await contractsManager.getPdf(nonNull(id));
+
+            log.info("Sending pdf file for signing...");
+            const link = await sign.sendFile({
+                buffer: bufferNDA,
+                signer1: {
+                    name: "Vladyslav Yazykov",
+                    emailAddress: "ceo@atmagaming.com",
+                },
+                signer2: {
+                    name,
+                    emailAddress: email,
+                },
+                title: "NDA - ATMA | Hypocrisy",
+                subject: "The NDA we talked about",
+                message: "",
+            });
+
+            log.info("File sent");
+            ctx.respond(`File sent for signing to ${name} at ${email}:\n\nLink for you to sign: ${link}`);
         },
     }),
     action({
