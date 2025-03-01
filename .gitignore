@@ -3,6 +3,7 @@ node_modules/
 
 # dotenv environment variable files
 .env
+.env.local*
 
 # Bun files
 .nx/
@@ -13,3 +14,4 @@ bun.lockb
 
 # Built files
 dist/
+secret/

@@ -4,6 +4,6 @@
     "ecmaFeatures": {
       "modules": true
     },
-    "project": ["./packages/*/tsconfig.json"]
+    "project": ["./packages/*/tsconfig.json", "./packages/integrations/*/tsconfig.json"]
   }
 }
