@@ -36,6 +36,17 @@ jobs:
           cat << EOF > .env
           ${{ secrets.ENV }}
           EOF
+      - name: oauth
+        run: |
+          mkdir -p secret
+          cat << EOF > secret/google-oauth-credentials.json
+          ${{ secrets.OAUTH_CRED }}
+          EOF
+      - name: token
+        run: |
+          cat << EOF > secret/google-token.json
+          ${{ secrets.GOOGLE_TOKEN }}
+          EOF
       - name: Dependencies
         run: |
           bun install
@@ -53,7 +64,7 @@ jobs:
           scp -o UserKnownHostsFile=./known_hosts -P $PORT ../../deploy/nginx.conf $USER@$HOST:/srv/conf/nginx.d/app.conf
       - name: Copy code
         run: |
-          rsync -ae "ssh -o UserKnownHostsFile=./known_hosts -p $PORT" --delete --include='dist/***' --include='.env' --include='package.json' --exclude='*' ./ $USER@$HOST:/srv/spring/
+          rsync -ae "ssh -o UserKnownHostsFile=./known_hosts -p $PORT" --delete --include='dist/***' --include='.env' --include='secret/***' --include='package.json' --exclude='*' ./ $USER@$HOST:/srv/spring/
       - name: Apply changes
         run: |
           ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl reread
