@@ -113,10 +113,34 @@ export class ContractsManager {
         if (!person) throw new Error(`Person with the name ${name} does not exist`);
 
         this.people.delete(name);
-        await this.apis.sheets.spreadsheets.values.clear({
+
+        const index = person.index;
+
+        // Remove them from the table
+        await this.apis.sheets.spreadsheets.batchUpdate({
             spreadsheetId: peopleSheetId,
-            range: `${peopleSheetName}!A${person.index + 2}:D${person.index + 2}`,
+            requestBody: {
+                requests: [
+                    {
+                        deleteDimension: {
+                            range: {
+                                sheetId: 0,
+                                dimension: "ROWS",
+                                startIndex: index,
+                                endIndex: index + 1,
+                            },
+                        },
+                    },
+                ],
+            },
         });
+
+        // Remove their folder on the drive
+        const folderId = await this.getPersonFolderId(name);
+        await this.apis.drive.files.delete({ fileId: folderId });
+
+        // Update indices
+        for (const person of this.people.values()) if (person.index > index) person.index--;
     }
 
     async fromTemplate(personName: string, templateName: Agreement) {
@@ -172,17 +196,22 @@ export class ContractsManager {
             const contractUrl = personTableData[`${type}Url` as const];
 
             // Check if already exists
-            if (contractUrl) doc = new Doc(nonNull(getFileId(contractUrl)), this.apis);
-            // Otherwise, create from template
-            else {
-                log.info(`Creating new ${type} for ${person.name}`);
-                doc = await this.fromTemplate(person.name, type);
+            if (contractUrl) {
+                // Remove it and create a new one
+                log.info(`Removing existing ${type} for ${person.name}`);
+                await this.apis.drive.files.delete({ fileId: getFileId(contractUrl) });
             }
+
+            // Otherwise, create from template
+            log.info(`Creating new ${type} for ${person.name}`);
+            doc = await this.fromTemplate(person.name, type);
         }
 
         // Update fields with person data
         log.info("Updating fields with person data");
         await doc.setName(`${type} - ${person.name}`);
+        doc.replace("[ROLE]", person.role);
+        doc.replace("[IDENTIFICATION]", person.identification);
         doc.replace("[NAME]", person.name);
         doc.replace("[EMAIL]", person.email);
         doc.replace("[PASSPORT]", person.passport);
@@ -203,8 +232,7 @@ export class ContractsManager {
 
         return doc.id;
     }
-
-    private async getPersonFolder(name: string) {
+    private async getPersonFolderId(name: string) {
         // Check if a folder with the person's name already exists
         const folderListResponse = await this.apis.drive.files.list({
             q: `'${agreementsFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and name = '${name}'`,
@@ -212,7 +240,13 @@ export class ContractsManager {
         });
 
         // Folder already exists, use the existing folder ID
-        if (folderListResponse.data.files?.nonEmpty) return nonNull(folderListResponse.data.files.first.id);
+        if (folderListResponse.data.files?.nonEmpty) return folderListResponse.data.files.first.id ?? undefined;
+    }
+
+    private async getPersonFolder(name: string) {
+        // Check if a folder with the person's name already exists
+        const existingId = await this.getPersonFolderId(name);
+        if (existingId) return existingId;
 
         // No folder exists, create a new one
         log.info(`Creating new folder for ${name}`);

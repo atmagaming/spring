@@ -1,7 +1,7 @@
 import { di } from "@elumixor/di";
 import { EventEmitter } from "@elumixor/frontils";
 import { Bot, BotError, InputFile } from "grammy";
-import type { ReactionType } from "grammy/types";
+import type { ParseMode, ReactionType } from "grammy/types";
 import {
     BotMessage,
     type CommandBotMessage,
@@ -50,12 +50,12 @@ export class ChatBot {
 
     /* Commands for sending messages to the user */
 
-    async sendText(text: TextResponse) {
+    async sendText(text: TextResponse, parse_mode?: ParseMode) {
         assert(this.chatId !== undefined, "Chat ID is not set.");
 
         // Send chunks recursively
         if (text instanceof ChunkedMessage) for await (const chunk of text) await this.sendText(chunk);
-        else await this.bot.api.sendMessage(this.chatId, await text);
+        else await this.bot.api.sendMessage(this.chatId, await text, { parse_mode });
     }
 
     async sendVoice(voice: ReadableStream) {
@@ -73,10 +73,11 @@ export class ChatBot {
         await this.bot.api.setMessageReaction(this.chatId, messageId, [reaction]);
     }
 
-    sendFile(file: ISendFileData & { caption?: string }) {
+    sendFile(file: ISendFileData & { caption?: string; parse_mode?: ParseMode }) {
         assert(this.chatId !== undefined, "Chat ID is not set.");
         return this.bot.api.sendDocument(this.chatId, new InputFile(file.buffer, file.fileName), {
             caption: file.caption,
+            parse_mode: file.parse_mode,
         });
     }
 

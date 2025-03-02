@@ -102,6 +102,7 @@ export class AI {
                     Given user's message, fill in arguments values, for the following action:
 
                     Action Intent: ${action.intent}
+                    Additional instructions:\n${action.additionalInstructions?.map((s, i) => `${i + 1}. ${s}`).join("\n")}
                     `,
                 },
                 ...history,

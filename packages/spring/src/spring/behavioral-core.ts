@@ -16,6 +16,7 @@ import {
 } from "./actions";
 import { ModelParameters } from "./parameters";
 import { State } from "./state";
+import type { ParseMode } from "grammy/types";
 
 export class BehavioralCore {
     selfName = "Spring";
@@ -82,13 +83,13 @@ export class BehavioralCore {
         return this.ai.getActionArgs(action, this.state.history.value);
     }
 
-    async respond({ file, text, ignoreHistory = false }: ResponseData) {
+    async respond({ file, text, parse_mode, ignoreHistory = false }: ResponseData) {
         if (file)
             // if some file data is provided - send file
-            await this.chat.sendFile({ ...file, caption: text ? await fullMessage(text) : undefined });
+            await this.chat.sendFile({ ...file, caption: text ? await fullMessage(text) : undefined, parse_mode });
         else if (text) {
             // Otherwise, send text, unless voice is preferred
-            if (!this.voicePreferred) await this.chat.sendText(text);
+            if (!this.voicePreferred) await this.chat.sendText(text, parse_mode);
             else {
                 const voiceBuffer = await this.ai.textToVoice(await fullMessage(text));
                 await this.chat.sendVoice(voiceBuffer);
@@ -104,4 +105,5 @@ interface ResponseData {
     file?: ISendFileData;
     text?: TextResponse;
     ignoreHistory?: boolean;
+    parse_mode?: ParseMode;
 }

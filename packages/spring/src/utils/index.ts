@@ -7,3 +7,4 @@ export * from "./tempfile";
 export * from "./json-file";
 export * from "./format-date";
 export * from "./full-message";
+export * from "./link";

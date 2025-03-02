@@ -8,6 +8,7 @@ export interface IAction<
 > {
     intent: string;
     args: TArgs;
+    additionalInstructions?: string[];
     run(ctx: IActionContext<z.infer<TArgs>>): Awaitable;
 }
 

@@ -7,6 +7,7 @@ interface ImportMetaEnv {
     readonly GOOGLE_CLIENT_SECRET: string;
     readonly FILE_SERVER_URL: string;
     readonly DROPBOX_API_KEY: string;
+    readonly DROPBOX_TEST_MODE: "true" | "false";
     readonly SIGNER_NAME: string;
     readonly SIGNER_EMAIL: string;
 }

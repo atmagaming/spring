@@ -59,7 +59,7 @@ export class DropboxSign {
             signers: [signer1, signer2],
             files: [file],
             signingOptions,
-            testMode: true, // important
+            testMode: import.meta.env.DROPBOX_TEST_MODE === "true",
             formFieldsPerDocument: [
                 {
                     apiId: "signature_field_1",

@@ -2,6 +2,7 @@ import { nonNull } from "@elumixor/frontils";
 import { agreementType, getFileId } from "integrations/google-docs";
 import { z } from "zod";
 import { action } from "../action";
+import { link } from "utils";
 
 export const signAction = action({
     intent: "Send agreement for signing",
@@ -31,7 +32,7 @@ export const signAction = action({
         const buffer = await contractsManager.getPdf(nonNull(id));
 
         log.info("Sending pdf file for signing...");
-        const link = await dropboxSign.sendFile({
+        const signLink = await dropboxSign.sendFile({
             buffer,
             signer1: {
                 name: import.meta.env.SIGNER_NAME,
@@ -48,7 +49,8 @@ export const signAction = action({
 
         log.info("File sent");
         await behavior.respond({
-            text: `File sent for signing to ${name} at ${email}:\n\nLink for you to sign: ${link}`,
+            text: `File sent for signing to ${name} at ${email}:\n\n${link("Link for you to sign", nonNull(signLink))}`,
+            parse_mode: "HTML",
         });
     },
 });
