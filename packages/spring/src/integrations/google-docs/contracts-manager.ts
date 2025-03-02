@@ -103,7 +103,7 @@ export class ContractsManager {
             range: `${peopleSheetName}!A${index + 2}:D${index + 2}`,
             valueInputOption: "RAW",
             requestBody: {
-                values: [Object.values(merged).map((v) => (v === null ? "" : (v as unknown)))],
+                values: [[merged.name, merged.email, merged.NDAUrl ?? "", merged.WHAUrl ?? ""]],
             },
         });
     }
