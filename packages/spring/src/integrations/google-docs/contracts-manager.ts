@@ -116,6 +116,9 @@ export class ContractsManager {
 
         const index = person.index;
 
+        const sheets = await this.apis.sheets.spreadsheets.get({ spreadsheetId: peopleSheetId });
+        const sheet = nonNull(sheets.data.sheets?.find((s) => s.properties?.title === peopleSheetName));
+
         // Remove them from the table
         await this.apis.sheets.spreadsheets.batchUpdate({
             spreadsheetId: peopleSheetId,
@@ -124,10 +127,10 @@ export class ContractsManager {
                     {
                         deleteDimension: {
                             range: {
-                                sheetId: 0,
+                                sheetId: nonNull(sheet.properties?.sheetId),
                                 dimension: "ROWS",
-                                startIndex: index,
-                                endIndex: index + 1,
+                                startIndex: index + 1,
+                                endIndex: index + 2,
                             },
                         },
                     },

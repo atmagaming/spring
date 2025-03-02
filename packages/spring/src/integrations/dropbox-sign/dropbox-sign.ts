@@ -68,7 +68,7 @@ export class DropboxSign {
                     ...firstBox,
                     page: this.extractor.numPages,
                     documentIndex: 0,
-                    required: false,
+                    required: true,
                 },
                 {
                     apiId: "signature_field_2",
@@ -77,7 +77,7 @@ export class DropboxSign {
                     ...secondBox,
                     page: this.extractor.numPages,
                     documentIndex: 0,
-                    required: false,
+                    required: true,
                 },
             ],
         });
