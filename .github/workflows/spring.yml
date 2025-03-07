@@ -6,15 +6,11 @@ on:
     branches:
       - master
     paths:
-      - "packages/spring/**"
       - ".github/workflows/spring.yml"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/spring
     env:
       HOST: ssh.rosti.cz
       USER: app
@@ -58,16 +54,16 @@ jobs:
           ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST /usr/local/bin/rosti bun ${{ vars.BUN_VERSION }}
       - name: Setup Supervisord
         run: |
-          scp -o UserKnownHostsFile=./known_hosts -P $PORT ../../deploy/spring.conf $USER@$HOST:/srv/conf/supervisor.d/spring.conf
+          scp -o UserKnownHostsFile=./known_hosts -P $PORT deploy/spring.conf $USER@$HOST:/srv/conf/supervisor.d/spring.conf
       - name: Setup Nginx
         run: |
-          scp -o UserKnownHostsFile=./known_hosts -P $PORT ../../deploy/nginx.conf $USER@$HOST:/srv/conf/nginx.d/app.conf
+          scp -o UserKnownHostsFile=./known_hosts -P $PORT deploy/nginx.conf $USER@$HOST:/srv/conf/nginx.d/app.conf
       - name: Copy code
         run: |
           rsync -ae "ssh -o UserKnownHostsFile=./known_hosts -p $PORT" --delete --include='dist/***' --include='.env' --include='secret/***' --include='package.json' --exclude='*' ./ $USER@$HOST:/srv/spring/
       - name: Dist file
         run: |
-          scp -o UserKnownHostsFile=./known_hosts -P $PORT ../../node_modules/pdfjs-dist/build/pdf.worker.mjs $USER@$HOST:/srv/spring/dist/pdf.worker.mjs
+          scp -o UserKnownHostsFile=./known_hosts -P $PORT node_modules/pdfjs-dist/build/pdf.worker.mjs $USER@$HOST:/srv/spring/dist/pdf.worker.mjs
       - name: Apply changes
         run: |
           ssh -o UserKnownHostsFile=./known_hosts -p $PORT $USER@$HOST supervisorctl reread

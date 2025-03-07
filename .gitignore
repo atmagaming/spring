@@ -15,3 +15,6 @@ bun.lockb
 # Built files
 dist/
 secret/
+
+# Model data files
+model-data/
