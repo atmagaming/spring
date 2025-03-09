@@ -3,16 +3,22 @@ import { AI } from "ai";
 import chalk from "chalk";
 import { ChatBot, type BotMessage, type TextBotMessage } from "chat-bot";
 import { log } from "utils";
-import { BehavioralCore } from "./behavioral-core";
+import { agreementAction } from "./actions/agreement";
+import { databasesActions } from "./actions/databases";
+import { listPeopleAction } from "./actions/list-people";
+import { Core } from "./core";
+import { signAction } from "./actions/sign";
+import { parsePassportAction } from "./actions/parse-passport";
+import { respondAction } from "./actions/respond";
 
 // todo: I don't know why this class exists. I feel like it's not needed
 export class Spring {
     private readonly chat = di.inject(ChatBot);
     private readonly ai = di.inject(AI);
-    private readonly behavior;
+    private readonly core;
 
     constructor() {
-        this.behavior = new BehavioralCore();
+        this.core = new Core();
 
         // Register event handlers from the chat
         this.chat.commandReceived.subscribe(this.wrap((message) => this.onCommand(message)));
@@ -23,12 +29,21 @@ export class Spring {
                 await this.onUserMessage(message as TextBotMessage);
             }),
         );
+
+        this.core.actions.push(
+            agreementAction(),
+            listPeopleAction(),
+            databasesActions(),
+            signAction(),
+            parsePassportAction(),
+            respondAction(),
+        );
     }
 
     async wakeUp() {
         await this.chat.start();
         log.log(chalk.yellow("Spring: waking up"));
-        await this.behavior.load();
+        await this.core.load();
         log.log(chalk.green("Spring: awake!"));
         await this.chat.sendText("(awake)");
     }
@@ -44,7 +59,7 @@ export class Spring {
     /** This is the main part of execution */
     private onUserMessage(message: TextBotMessage) {
         log.log(`${chalk.cyan("User:")} ${message.text}`);
-        return this.behavior.handleUserMessage(message);
+        return this.core.onUserMessage(message);
     }
 
     /* Commands */
@@ -56,15 +71,15 @@ export class Spring {
             case "ping":
                 return this.chat.sendText("Pong!");
             case "history": {
-                const { historyString } = this.behavior;
+                const { historyString } = this.core;
                 if (historyString.trim() === "") return this.chat.sendText("History is empty.");
-                return this.chat.sendText(this.behavior.historyString);
+                return this.chat.sendText(this.core.historyString);
             }
             case "clearhistory":
             case "reset":
-                return this.behavior.reset();
+                return this.core.reset();
             case "systemMessage":
-                return this.chat.sendText(this.behavior.systemMessage);
+                return this.chat.sendText(this.core.systemMessage);
             case "shutdown":
                 await this.sleep();
                 await this.chat.stop();

@@ -1,5 +1,6 @@
 import { di } from "@elumixor/di";
 import { nonNull, notImplemented, zip } from "@elumixor/frontils";
+import { log } from "utils";
 import { Apis } from "../apis";
 import { getFileId } from "../utils";
 
@@ -8,16 +9,19 @@ export type UpdateParams<T extends Record<string, string>> = { [k in keyof T]?: 
 export class Database<TProps extends Record<string, string> = Record<string, string>> {
     protected readonly apis = di.inject(Apis);
     readonly id;
+    readonly url;
+    private _sheetName;
+    readonly name;
 
     private _keys = [] as string[];
     private _properties = [] as (keyof TProps)[];
     private sheetId = 0;
 
-    constructor(
-        readonly url: string,
-        private sheetName = "",
-    ) {
+    constructor({ url, sheetName = "", name = "Unnamed DB" }: { url: string; sheetName?: string; name?: string }) {
+        this.url = url;
         this.id = getFileId(url);
+        this._sheetName = sheetName;
+        this.name = name;
     }
 
     get keys() {
@@ -28,11 +32,17 @@ export class Database<TProps extends Record<string, string> = Record<string, str
         return this._properties;
     }
 
+    get sheetName() {
+        return this._sheetName;
+    }
+
     has(name: string) {
         return this.keys.includes(name);
     }
 
     async refreshMetadata() {
+        log.info("Refreshing metadata for DB", this.name);
+
         const response = await this.apis.sheets.spreadsheets.get({
             spreadsheetId: this.id,
             fields: "sheets.properties",
@@ -41,13 +51,12 @@ export class Database<TProps extends Record<string, string> = Record<string, str
         const sheets = response.data.sheets ?? [];
         if (this.sheetName === "") {
             const { title, sheetId } = sheets.first.properties ?? {};
-            this.sheetName = nonNull(title);
+            this._sheetName = nonNull(title);
             this.sheetId = nonNull(sheetId);
         } else {
             const sheet = nonNull(sheets.find((sheet) => sheet.properties?.title === this.sheetName));
             this.sheetId = nonNull(sheet.properties?.sheetId);
         }
-
         const [keysResponse, propertiesResponse] = await Promise.all([
             this.apis.sheets.spreadsheets.values.get({
                 spreadsheetId: this.id,
@@ -80,6 +89,23 @@ export class Database<TProps extends Record<string, string> = Record<string, str
 
         const values = (response.data.values?.flat() ?? []) as string[];
         return Object.fromEntries(zip(this.properties, values)) as TProps;
+    }
+
+    async getAll() {
+        const response = await this.apis.sheets.spreadsheets.values.get({
+            spreadsheetId: this.id,
+            range: `${this.sheetName}!A2:${this.columnLetter(this.properties.length + 1)}${this.keys.length + 1}`,
+        });
+
+        return (
+            response.data.values?.map(
+                ([name, ...data]) =>
+                    ({ name: name as string, data: Object.fromEntries(zip(this.properties, data)) as TProps }) as {
+                        name: string;
+                        data: TProps;
+                    },
+            ) ?? []
+        );
     }
 
     getFuzzy(_name: string): Promise<never> {
@@ -130,8 +156,7 @@ export class Database<TProps extends Record<string, string> = Record<string, str
 
         for (const [key, value] of Object.entries(data ?? {})) {
             const index = this.properties.indexOf(key as keyof TProps);
-            if (index < 0) throw new Error(`Property ${key} does not exist in the database`);
-            arr[index] = value as string;
+            if (index >= 0) arr[index] = value as string;
         }
 
         const index = this.keys.length + 2;

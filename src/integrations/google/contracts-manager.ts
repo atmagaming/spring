@@ -13,32 +13,32 @@ export class ContractsManager {
     private readonly databases = di.inject(Databases);
     private readonly apis = di.inject(Apis);
 
-    private people!: Database<IPersonData>;
-    private templates!: Database<{ url: string }>;
+    private _people!: Database<IPersonData>;
+    private _templates!: Database<{ url: string }>;
 
     async init() {
-        this.people = await this.databases.getDatabase("People");
-        this.templates = await this.databases.getDatabase("Templates");
+        this._people = await this.databases.getDatabase("People");
+        this._templates = await this.databases.getDatabase("Templates");
     }
 
     getPerson(name: string) {
-        return this.people.get(name);
+        return this._people.get(name);
     }
 
     getPersonFuzzy(name: string) {
-        return this.people.getFuzzy(name);
+        return this._people.getFuzzy(name);
     }
 
     addPerson(name: string, data: Partial<IPersonData>) {
-        return this.people.add(name, data);
+        return this._people.add(name, data);
     }
 
     async updatePerson(name: string, data: UpdateParams<IPersonData>) {
-        return this.people.update(name, data);
+        return this._people.update(name, data);
     }
 
     async removePerson(name: string) {
-        await this.people.delete(name);
+        await this._people.delete(name);
 
         // Remove their folder on the drive
         const folderId = await this.personFolderId(name);
@@ -69,14 +69,14 @@ export class ContractsManager {
         const agreementProperty = agreement === "NDA" ? "ndaUrl" : "contractUrl";
 
         // Add person if they don't exist
-        if (!this.people.has(name)) {
+        if (!this._people.has(name)) {
             log.info(`Adding new person ${name} to the table`);
             await this.addPerson(name, data);
             log.info(`Creating new ${agreement} for ${name}`);
             doc = await this.fromTemplate(name, agreement);
         } else {
             // Person exists and maybe has an agreement
-            const personTableData = await this.people.get(name);
+            const personTableData = await this._people.get(name);
             const url = personTableData[agreementProperty];
 
             // Check if already exists
@@ -138,7 +138,7 @@ export class ContractsManager {
     }
 
     private async getTemplateId(name: Agreement) {
-        const template = await this.templates.get(name);
+        const template = await this._templates.get(name);
         return getFileId(template.url);
     }
 

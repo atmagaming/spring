@@ -1,15 +1,12 @@
 import { processDocument } from "integrations/algo-docs";
 import { tempfile } from "utils";
-import { z } from "zod";
-import { action } from "../action";
+import { Action } from "../action";
 
-export const parsePassportAction = action({
-    intent: "Parse passport data",
-    args: z.object({}),
-    async run({ message, behavior }) {
+export const parsePassportAction = () =>
+    new Action("parsePassport", "Parse passport data from the image", {}, async (_args, { message, core }) => {
         // Create a temporary file
-        const media = await message?.photo;
-        if (!media) return behavior.respond({ text: "Please attach the file" });
+        const media = await message.photo;
+        if (!media) return core.sendMessage("Please attach the file");
 
         const file = await tempfile(media.buffer, { fileName: media.name });
         const result = await processDocument(file);
@@ -21,6 +18,5 @@ export const parsePassportAction = action({
         response += "\nSuggestion:\n";
         response += String(result.suggestion);
 
-        await behavior.respond({ text: response });
-    },
-});
+        await core.sendMessage(response);
+    });

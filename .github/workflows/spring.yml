@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - master
-    paths:
-      - ".github/workflows/spring.yml"
 
 jobs:
   deploy:

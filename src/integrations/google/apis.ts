@@ -1,6 +1,7 @@
-import { google } from "googleapis";
-import { authorize } from "./authorize";
 import { di } from "@elumixor/di";
+import { google } from "googleapis";
+import { log } from "utils";
+import { authorize } from "./auth/authorize";
 
 @di.injectable
 export class Apis {
@@ -9,8 +10,13 @@ export class Apis {
     private _sheets!: ReturnType<typeof google.sheets>;
 
     async init() {
+        const p = log.process("Authorizing Google APIs");
         const auth = await authorize({
-            scope: ["https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive"],
+            scope: [
+                "https://www.googleapis.com/auth/documents",
+                "https://www.googleapis.com/auth/drive",
+                "https://www.googleapis.com/auth/spreadsheets",
+            ],
             tokenPath: "secret/google-token.json",
             credentialsPath: "secret/google-oauth-credentials.json",
         });
@@ -18,6 +24,7 @@ export class Apis {
         this._docs = google.docs({ version: "v1", auth });
         this._drive = google.drive({ version: "v3", auth });
         this._sheets = google.sheets({ version: "v4", auth });
+        p.success("Authorized Google APIs");
     }
 
     get docs() {

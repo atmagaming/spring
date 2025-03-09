@@ -21,7 +21,7 @@
   "dependencies": {
     "@dropbox/sign": "^1.8.0",
     "@elumixor/di": "^0.2.2",
-    "@elumixor/frontils": "^2.12.0",
+    "@elumixor/frontils": "^2.14.1",
     "@grammyjs/emoji": "^1.2.0",
     "@types/html-pdf": "^3.0.3",
     "chalk": "^5.4.1",

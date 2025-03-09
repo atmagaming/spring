@@ -3,7 +3,9 @@ import { maxHistorySize, paths } from "config";
 import { exists } from "fs/promises";
 import { fullMessage, readJSON, writeJSON } from "utils";
 import type { ChatHistory, ChatMessage, MessageRole } from "../types";
+import { di } from "@elumixor/di";
 
+@di.injectable
 export class History {
     private _value: ChatMessage[] = [];
     private readonly selfName: MessageRole = "assistant";
