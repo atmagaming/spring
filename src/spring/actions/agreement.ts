@@ -55,7 +55,7 @@ export const agreementAction = () =>
 
             The identification should ideally be in the following format:
             "[DOCUMENT_TYPE] [DOCUMENT_NUMBER], issued on [ISSUE_DATE] by authority [AUTHORITY]"
-            Example: "passport 123456789, issued on January 1, 2000 by authority 1234"
+            Example: "passport 123456789, issued on 1 January, 2000 by authority 1234"
 
             Make sure the identification is formatted correctly and has no spelling or grammar errors.
 
