@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Action } from "../action";
+import { log } from "utils";
 
 export const databasesActions = () =>
     new Action(
@@ -8,8 +9,15 @@ export const databasesActions = () =>
         {
             database: z.enum(["People", "Finances", "Other"]).describe("Database to use for the action"),
             action: z.enum(["Add", "Update", "Remove"]).describe("Action to perform"),
+            itemName: z.string().describe("Name of the item to add, update or remove"),
         },
-        async ({ database, action }, { core }) => {
-            await core.sendMessage(`You have selected action: ${action} on database: ${database}`);
+        async ({ database, action, itemName }, { core }) => {
+            log.info(`You have selected action: ${action} on database: ${database} for item: ${itemName}`);
+
+            if (action === "Remove") {
+                if (database === "People") {
+                    await core.contractsManager.removePerson(itemName);
+                }
+            }
         },
     );

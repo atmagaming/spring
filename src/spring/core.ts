@@ -3,7 +3,7 @@ import { EventEmitter, nonNull } from "@elumixor/frontils";
 import { AI } from "ai";
 import { ChatBot, type TextBotMessage, type TextResponse } from "chat-bot";
 import { DropboxSign } from "integrations/dropbox-sign";
-import { ContractsManager } from "integrations/google";
+import { ContractsManager, Databases } from "integrations/google";
 import type { ChatCompletionMessageToolCall } from "openai/resources/index.mjs";
 import { fullMessage, log } from "utils";
 import { z } from "zod";
@@ -20,10 +20,9 @@ export class Core {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     readonly actions = [] as Action<any>[];
 
-    readonly integrations = {
-        contractsManager: new ContractsManager(),
-        dropboxSign: new DropboxSign(),
-    };
+    readonly databases = di.inject(Databases);
+    readonly contractsManager = new ContractsManager();
+    readonly dropboxSign = new DropboxSign();
 
     private awaitingMessage = false;
     private readonly messageReceived = new EventEmitter<string>();
@@ -66,6 +65,7 @@ export class Core {
         await this.state.history.addMessage("user", message.text);
 
         // Check tool calls
+        await this.sendMessage("Thinking...");
         const result = await this.ai.client.chat.completions.create({
             model: this.ai.textModel,
             messages: [{ role: "system", content: this.systemMessage }, ...this.history],
@@ -112,7 +112,8 @@ export class Core {
     ) {
         const tool = nonNull(this.actions.find((action) => action.name === name));
 
-        log.info(`Decided to call ${name} with args: ${args}`);
+        log.debug(`Decided to call ${name} with args: ${args}`);
+
         await tool.run(JSON.parse(args) as Partial<z.infer<typeof tool.args>>, message);
     }
 }

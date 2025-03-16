@@ -31,4 +31,8 @@ export class Doc {
             requestBody: { requests: this.requests },
         });
     }
+
+    async remove() {
+        await this.apis.drive.files.delete({ fileId: this.id });
+    }
 }

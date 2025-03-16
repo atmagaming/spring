@@ -1,14 +1,6 @@
 import "dotenv/config";
-import "./utils";
-import { ChatBot } from "chat-bot";
-import { AI } from "ai";
 import { Spring } from "spring";
-import { Databases, Apis } from "integrations/google";
-
-new AI();
-new ChatBot();
-await new Apis().init();
-new Databases();
+import "./utils";
 
 const spring = new Spring();
 

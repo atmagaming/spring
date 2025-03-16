@@ -8,6 +8,8 @@ export type UpdateParams<T extends Record<string, string>> = { [k in keyof T]?: 
 
 export class Database<TProps extends Record<string, string> = Record<string, string>> {
     protected readonly apis = di.inject(Apis);
+    protected refreshSeconds = 5; // duration assumed the database is not changed
+
     readonly id;
     readonly url;
     private _sheetName;
@@ -16,6 +18,8 @@ export class Database<TProps extends Record<string, string> = Record<string, str
     private _keys = [] as string[];
     private _properties = [] as (keyof TProps)[];
     private sheetId = 0;
+
+    private lastRefresh = 0;
 
     constructor({ url, sheetName = "", name = "Unnamed DB" }: { url: string; sheetName?: string; name?: string }) {
         this.url = url;
@@ -41,6 +45,11 @@ export class Database<TProps extends Record<string, string> = Record<string, str
     }
 
     async refreshMetadata() {
+        // Check if refresh was not too long ago
+        const now = Date.now();
+        if (now - this.lastRefresh < this.refreshSeconds * 1000) return;
+        this.lastRefresh = now;
+
         log.info("Refreshing metadata for DB", this.name);
 
         const response = await this.apis.sheets.spreadsheets.get({
@@ -185,7 +194,11 @@ export class Database<TProps extends Record<string, string> = Record<string, str
 
         for (const [key, value] of Object.entries(data)) {
             const index = this.properties.indexOf(key as keyof TProps);
-            if (index < 0) throw new Error(`Property ${key} does not exist in the database`);
+            if (index < 0) {
+                log.warn(`Property ${key} does not exist in the database`);
+                continue;
+            }
+
             arr[index] = (value as string | null) ?? "";
         }
 

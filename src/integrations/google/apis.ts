@@ -10,7 +10,8 @@ export class Apis {
     private _sheets!: ReturnType<typeof google.sheets>;
 
     async init() {
-        const p = log.process("Authorizing Google APIs");
+        log.debug("Authorizing Google APIs");
+
         const auth = await authorize({
             scope: [
                 "https://www.googleapis.com/auth/documents",
@@ -24,7 +25,8 @@ export class Apis {
         this._docs = google.docs({ version: "v1", auth });
         this._drive = google.drive({ version: "v3", auth });
         this._sheets = google.sheets({ version: "v4", auth });
-        p.success("Authorized Google APIs");
+
+        log.debug("Authorized Google APIs");
     }
 
     get docs() {

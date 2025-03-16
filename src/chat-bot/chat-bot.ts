@@ -40,12 +40,9 @@ export class ChatBot {
         void this.bot.start({
             allowed_updates: ["message", "message_reaction", "message_reaction_count", "edited_message"], // todo: react to message edit...
         });
-        log.info("Bot is up and running!");
-        return Promise.resolve();
     }
 
     async stop() {
-        log.info("Bot shutting down...");
         await this.bot.stop();
     }
 

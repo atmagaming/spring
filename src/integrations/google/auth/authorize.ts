@@ -36,7 +36,7 @@ export async function authorize({
         const token = await readJSON<Parameters<typeof oAuth2Client.setCredentials>[0]>(tokenPath);
         oAuth2Client.setCredentials(token);
 
-        log.info("Using existing token");
+        log.debug("Using existing token");
 
         // Automatically refresh token if needed
         oAuth2Client.on("tokens", (tokens) => {
@@ -48,10 +48,10 @@ export async function authorize({
         });
 
         if (isTokenExpired(oAuth2Client)) {
-            log.info("Access token expired. Refreshing...");
+            log.debug("Access token expired. Refreshing...");
             await refreshAccessToken(oAuth2Client, tokenPath);
         } else {
-            log.info("Using existing valid token");
+            log.debug("Using existing valid token");
         }
 
         // Automatically refresh 1 minute

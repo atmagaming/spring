@@ -10,17 +10,17 @@ export const agreementAction = () =>
         "Create a new agreement for the person",
         {
             agreementType,
-            role: z
+            Position: z
                 .string()
                 .describe(
                     "Role of the person to create the agreement for. If the agreement type is NDA, the role is automatically set to 'Recipient'",
                 ),
             name: z.string().describe("Full name of the person to create the agreement for"),
-            email: z.string(),
-            idType: z.string().describe("Type of ID. For example, passport or residence permit"),
-            idNumber: z.string().describe("The number of ID"),
-            authority: z.string().describe("The authority that issued the ID. For example, 8032, or USA"),
-            issueDate: z
+            Email: z.string(),
+            "Id Type": z.string().describe("Type of ID. For example, passport or residence permit"),
+            "Id Number": z.string().describe("The number of ID"),
+            "Issue Authority": z.string().describe("The authority that issued the ID. For example, 8032, or USA"),
+            "Issue Date": z
                 .string()
                 .nullable()
                 .describe(
@@ -29,25 +29,27 @@ export const agreementAction = () =>
                 ),
             expirationDate: z.string().nullable().describe("The expiration date of the agreement"),
         },
-        async ({ agreementType, role, name, ...personData }, { core, ai }) => {
-            const { contractsManager } = core.integrations;
+        async ({ agreementType, Position, name, ...personData }, { core, ai }) => {
+            const { contractsManager } = core;
 
             await contractsManager.init();
 
-            await core.sendMessage(`Creating ${agreementType} for ${role} ${name}`);
+            log.info(`Creating ${agreementType} for ${Position} ${name}`);
 
             let issueDate;
-            if (personData.issueDate) {
-                const [day, month, year] = personData.issueDate.split("/").map(Number);
+            if (personData["Issue Date"]) {
+                const [day, month, year] = personData["Issue Date"].split("/").map(Number);
                 issueDate = formatDate(new Date(year, month - 1, day));
             }
 
-            const identification = await ai.textCompletion(`
+            log.info("Generating identification...");
+
+            let identification = await ai.textCompletion(`
             Create an identification for the person:
             Name: ${name}
-            Document type: ${personData.idType}
-            Document number: ${personData.idNumber}
-            Authority: ${personData.authority}
+            Document type: ${personData["Id Type"]}
+            Document number: ${personData["Id Number"]}
+            Authority: ${personData["Issue Authority"]}
             Issue date: ${issueDate}
             Expiration date: ${personData.expirationDate}
 
@@ -56,14 +58,24 @@ export const agreementAction = () =>
             Example: "passport 123456789, issued on January 1, 2000 by authority 1234"
 
             Make sure the identification is formatted correctly and has no spelling or grammar errors.
-            Do not end the identification with a period or a comma.
 
             If some data is missing, create an identification without it as best as possible.
             However, do not put non-existent data - do not guess.`);
 
+            // Remove last dot if it exists
+            if (identification.endsWith(".")) identification = identification.slice(0, -1);
+
+            // first letter should be lowercase
+            identification = `${identification.charAt(0).toLowerCase()}${identification.slice(1)}`;
+
+            // Remove quotes if they exist
+            identification = identification.replace(/^"|"$/g, "");
+
+            log.info(`Generated identification: ${identification}\n\nCreating ${agreementType}...`);
+
             const id = await contractsManager.createAgreement(
                 name,
-                { ...personData, role, issueDate },
+                { ...personData, Position },
                 identification,
                 agreementType,
             );

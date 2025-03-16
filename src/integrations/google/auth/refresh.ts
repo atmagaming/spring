@@ -13,7 +13,7 @@ export async function refreshAccessToken(oAuth2Client: OAuth2Client, tokenPath: 
         const { credentials } = await oAuth2Client.refreshAccessToken();
         oAuth2Client.setCredentials(credentials);
         await writeJSON(tokenPath, credentials);
-        log.info("Access token refreshed successfully");
+        log.debug("Access token refreshed successfully");
     } catch (error) {
         log.error("Error refreshing access token:", error instanceof Error ? error.message : "");
         throw new Error("Failed to refresh access token. Re-authentication required.");

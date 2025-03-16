@@ -15,10 +15,10 @@ export async function processDocument(filePath: string) {
     if (/^[0-9]+$/.test(filePath)) {
         id = filePath;
     } else {
-        log.log("uploading");
+        log.debug("uploading");
         const result = await algoDocs.uploadDocument(filePath);
 
-        log.log("done");
+        log.debug("done");
         id = result.id;
     }
 
@@ -28,7 +28,7 @@ export async function processDocument(filePath: string) {
 
     const maxTries = 20;
     for (let i = 0; i < maxTries; i++) {
-        log.log(`Attempt ${i + 1}/${maxTries}`);
+        log.debug(`Attempt ${i + 1}/${maxTries}`);
         data = await algoDocs.getExtractedData(id);
         if (data.length > 0) break;
 
@@ -36,7 +36,7 @@ export async function processDocument(filePath: string) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
-    log.log("YES");
+    log.debug("YES");
 
     if (data === undefined || data.length === 0) {
         spinner.stop();
@@ -45,7 +45,7 @@ export async function processDocument(filePath: string) {
 
     spinner.success("Document processed successfully");
 
-    log.log("processing with AI...");
+    log.debug("processing with AI...");
     spinner.start("Processing with AI...");
     const result = await processor.process(data);
     spinner.success("Processed successfully");
@@ -64,12 +64,12 @@ if (require.main === module) {
 
     try {
         const result = await processDocument(filePath);
-        log.log("Extracted Data:");
-        log.log(result.extracted);
-        log.log("Response:");
-        log.log(result.response);
-        log.log("Suggestion:");
-        log.log(result.suggestion);
+        log.debug("Extracted Data:");
+        log.debug(result.extracted);
+        log.debug("Response:");
+        log.debug(result.response);
+        log.debug("Suggestion:");
+        log.debug(result.suggestion);
     } catch (error) {
         log.error("Error processing document:", error);
         process.exit(1);

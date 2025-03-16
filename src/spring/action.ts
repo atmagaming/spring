@@ -48,14 +48,12 @@ export class Action<TArgs extends ZodArgs = ZodArgs, TReturn = unknown> {
         this.fixNullArgs(args);
 
         // 1. Obtain args
-        log.info("Getting args...");
         const argsResult = await this.getArgs(args as Partial<FunctionArgs<TArgs>>);
 
         // 2. Abort if could not parse args
         if (argsResult.aborted) return { aborted: true, reason: "Could not parse args" };
 
         // 3. Run the action with args
-        log.info("Running action...");
         const result = await this._run(argsResult.result, { ai: this.ai, core: this.core, message });
         return result;
     }
@@ -103,7 +101,7 @@ export class Action<TArgs extends ZodArgs = ZodArgs, TReturn = unknown> {
     private async getMissingArgsFromUser(keys: string[]): Promise<Abortable<Partial<FunctionArgs<TArgs>>>> {
         let result = {} as Partial<FunctionArgs<TArgs>>;
 
-        log.info(`Trying to get args: ${keys.join(", ")}`);
+        log.debug(`Trying to get args: ${keys.join(", ")}`);
 
         {
             // Check if args can be inferred from the history
@@ -128,8 +126,6 @@ export class Action<TArgs extends ZodArgs = ZodArgs, TReturn = unknown> {
                 response_format: zodResponseFormat(zodFormat, "answer"),
             });
 
-            log.inspect(answer);
-
             const { parsed, refusal } = answer.choices.first.message;
 
             if (parsed === null)
@@ -144,8 +140,6 @@ export class Action<TArgs extends ZodArgs = ZodArgs, TReturn = unknown> {
             // Update result
             result = { ...result, ...this.fixNullArgs(parsed as Partial<FunctionArgs<TArgs>>) };
         }
-
-        log.inspect(result);
 
         // Update missing arg keys
         keys = keys.filter((key) => result[key] === undefined);

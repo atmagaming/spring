@@ -3,7 +3,7 @@ import { nonNull } from "@elumixor/frontils";
 import { formatDate, log } from "utils";
 import { Apis } from "./apis";
 import { agreementsFolderId } from "./config";
-import type { Database, UpdateParams } from "./databases";
+import type { UpdateParams } from "./databases";
 import { Databases } from "./databases";
 import { Doc } from "./doc";
 import type { Agreement, IPersonData } from "./types";
@@ -13,32 +13,36 @@ export class ContractsManager {
     private readonly databases = di.inject(Databases);
     private readonly apis = di.inject(Apis);
 
-    private _people!: Database<IPersonData>;
-    private _templates!: Database<{ url: string }>;
+    private get people() {
+        return this.databases.people;
+    }
+
+    private get templates() {
+        return this.databases.templates;
+    }
 
     async init() {
-        this._people = await this.databases.getDatabase("People");
-        this._templates = await this.databases.getDatabase("Templates");
+        await this.databases.init();
     }
 
     getPerson(name: string) {
-        return this._people.get(name);
+        return this.people.get(name);
     }
 
     getPersonFuzzy(name: string) {
-        return this._people.getFuzzy(name);
+        return this.people.getFuzzy(name);
     }
 
     addPerson(name: string, data: Partial<IPersonData>) {
-        return this._people.add(name, data);
+        return this.people.add(name, data);
     }
 
     async updatePerson(name: string, data: UpdateParams<IPersonData>) {
-        return this._people.update(name, data);
+        return this.people.update(name, data);
     }
 
     async removePerson(name: string) {
-        await this._people.delete(name);
+        await this.people.delete(name);
 
         // Remove their folder on the drive
         const folderId = await this.personFolderId(name);
@@ -66,17 +70,17 @@ export class ContractsManager {
     async createAgreement(name: string, data: Partial<IPersonData>, identification: string, agreement: Agreement) {
         let doc;
 
-        const agreementProperty = agreement === "NDA" ? "ndaUrl" : "contractUrl";
+        const agreementProperty = agreement === "NDA" ? "NDA" : "Contract";
 
         // Add person if they don't exist
-        if (!this._people.has(name)) {
+        if (!this.people.has(name)) {
             log.info(`Adding new person ${name} to the table`);
             await this.addPerson(name, data);
             log.info(`Creating new ${agreement} for ${name}`);
             doc = await this.fromTemplate(name, agreement);
         } else {
             // Person exists and maybe has an agreement
-            const personTableData = await this._people.get(name);
+            const personTableData = await this.people.get(name);
             const url = personTableData[agreementProperty];
 
             // Check if already exists
@@ -92,35 +96,34 @@ export class ContractsManager {
         }
 
         // Update fields with person data
-        log.info("Updating fields with person data");
+        log.info("Updating document fields with person data");
         await doc.setName(`${agreement} - ${name}`);
+
         doc.replace("[IDENTIFICATION]", identification);
         doc.replace("[NAME]", name);
 
-        if (data.role) doc.replace("[ROLE]", data.role);
-        if (data.email) doc.replace("[EMAIL]", data.email);
-        if (data.idNumber) doc.replace("[PASSPORT]", data.idNumber);
-        if (data.issueDate) doc.replace("[ISSUE_DATE]", data.issueDate);
-        if (data.authority) doc.replace("[AUTHORITY]", data.authority);
+        if (data.Position) doc.replace("[ROLE]", data.Position);
+        if (data.Email) doc.replace("[EMAIL]", data.Email);
+        if (data["Id Type"]) doc.replace("[ID_TYPE]", data["Id Type"]);
+        if (data["Id Number"]) doc.replace("[ID_NUMBER]", data["Id Number"]);
+        if (data["Issue Authority"]) doc.replace("[AUTHORITY]", data["Issue Authority"]);
 
         // For date, use the current day
         doc.replace("[DATE]", formatDate(new Date()));
         await doc.save();
 
+        log.inspect(data);
+
         // Update person table
         log.info("Updating person table");
-        await this.updatePerson(name, {
-            email: data.email,
-            [agreementProperty]: getDocsUrl(doc.id),
-        });
+        await this.updatePerson(name, { ...data, [agreementProperty]: getDocsUrl(doc.id) });
 
         return doc.id;
     }
 
-    private async fromTemplate(personName: string, templateName: Agreement) {
+    async fromTemplate(personName: string, templateName: Agreement) {
         // Get person's folder
         const personFolderId = await this.personFolder(personName);
-
         const templateId = await this.getTemplateId(templateName);
 
         // Make a copy of the template
@@ -138,8 +141,8 @@ export class ContractsManager {
     }
 
     private async getTemplateId(name: Agreement) {
-        const template = await this._templates.get(name);
-        return getFileId(template.url);
+        const template = await this.templates.get(name);
+        return getFileId(template.Url);
     }
 
     private async personFolderId(name: string) {
