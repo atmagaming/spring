@@ -13,6 +13,7 @@ export function getNewToken(oAuth2Client: OAuth2Client, port: string, scope: str
                 const authUrl = oAuth2Client.generateAuthUrl({
                     access_type: "offline",
                     scope,
+                    prompt: "consent",
                 });
 
                 if (url.pathname === "/")
@@ -26,6 +27,8 @@ export function getNewToken(oAuth2Client: OAuth2Client, port: string, scope: str
 
                     try {
                         const { tokens } = await oAuth2Client.getToken(code);
+                        if (!tokens.refresh_token) throw new Error("No refresh token received");
+
                         oAuth2Client.setCredentials(tokens);
                         await writeJSON(tokenPath, tokens);
 
