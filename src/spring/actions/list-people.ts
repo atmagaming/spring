@@ -1,28 +1,28 @@
-import { di } from "@elumixor/di";
-import { Databases } from "integrations/google";
-import { link } from "utils";
+import { link, log } from "utils";
 import { Action } from "../action";
 
 export const listPeopleAction = () =>
     new Action("listPeople", "List currently stored people and their data", {}, async (_args, { core }) => {
-        const databases = di.inject(Databases);
-        const people = await databases.getDatabase("People");
+        const people = core.databases.people;
 
         let peopleStr = "";
+
+        log.inspect(await people.getAll());
 
         for (const [
             index,
             {
                 name,
-                data: { email, ...urls },
+                data: { Email, NDA, Contract, Status },
             },
         ] of (await people.getAll()).entries()) {
-            peopleStr += `${index}. ${name} - ${email}`;
+            peopleStr += `${index + 1}. ${name} - ${Email}`;
 
-            for (const [type, url] of Object.entries(urls))
-                if (((url as string | undefined) ?? "") !== "") peopleStr += ` - ${link(type.slice(0, 3), url)}`;
+            if (NDA !== "") peopleStr += `\n - ${link("NDA", NDA)}`;
+            if (Contract !== "") peopleStr += `\n - ${link("Contract", Contract)}`;
 
-            peopleStr += "\n";
+            peopleStr += `\nStatus: ${Status}`;
+            peopleStr += "\n\n";
         }
 
         await core.sendMessage({ text: peopleStr.trim(), parse_mode: "HTML" });

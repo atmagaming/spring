@@ -112,7 +112,7 @@ export class Core {
     ) {
         const tool = nonNull(this.actions.find((action) => action.name === name));
 
-        log.debug(`Decided to call ${name} with args: ${args}`);
+        log.info(`Decided to call ${name} with args: ${args}`);
 
         await tool.run(JSON.parse(args) as Partial<z.infer<typeof tool.args>>, message);
     }

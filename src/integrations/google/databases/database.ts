@@ -96,6 +96,8 @@ export class Database<TProps extends Record<string, string> = Record<string, str
             range: `${this.sheetName}!B${index}:${this.columnLetter(this.properties.length + 1)}${index}`,
         });
 
+        this.fixResponse(response);
+
         const values = (response.data.values?.flat() ?? []) as string[];
         return Object.fromEntries(zip(this.properties, values)) as TProps;
     }
@@ -106,10 +108,20 @@ export class Database<TProps extends Record<string, string> = Record<string, str
             range: `${this.sheetName}!A2:${this.columnLetter(this.properties.length + 1)}${this.keys.length + 1}`,
         });
 
+        this.fixResponse(response);
+
         return (
             response.data.values?.map(
                 ([name, ...data]) =>
-                    ({ name: name as string, data: Object.fromEntries(zip(this.properties, data)) as TProps }) as {
+                    ({
+                        name: name as string,
+                        data: Object.fromEntries(
+                            zip(
+                                this.properties,
+                                data.map((e) => (e ?? "") as unknown),
+                            ),
+                        ) as TProps,
+                    }) as {
                         name: string;
                         data: TProps;
                     },
@@ -284,6 +296,11 @@ export class Database<TProps extends Record<string, string> = Record<string, str
                 ],
             },
         });
+    }
+
+    private fixResponse(response: { data: { values?: unknown[][] | null } }) {
+        if (!response.data.values) return;
+        for (const row of response.data.values) while (row.length < this.properties.length + 1) row.push("");
     }
 
     private getIndex(name: string) {

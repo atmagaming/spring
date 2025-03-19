@@ -1,4 +1,3 @@
-import { nonNull } from "@elumixor/frontils";
 import { getDocument } from "pdfjs-dist";
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 
@@ -23,7 +22,9 @@ export class Extractor {
     }
 
     getBox(name: string) {
-        const item = nonNull(this.items.find((item) => item.str === name));
+        const item = this.items.find((item) => item.str === name);
+        if (item === undefined) throw new Error(`Could not find the box: ${name}`);
+
         const transform = item.transform as number[];
 
         const w = item.width / this.width;
