@@ -83,6 +83,7 @@ export class DropboxSign {
         });
 
         const signUrl = result.body.signatureRequest.signingUrl;
+
         return signUrl;
     }
 }

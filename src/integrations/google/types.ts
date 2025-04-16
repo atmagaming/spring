@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const agreementType = z.enum(["NDA", "WHA", "SDA (fixed per sprint)"] as const);
+export const agreementType = z.enum(["NDA", "WHA (sprints)", "WHA (objects)", "SDA (sprints)"] as const);
 export type Agreement = z.infer<typeof agreementType>;
 
 const personFields = [
